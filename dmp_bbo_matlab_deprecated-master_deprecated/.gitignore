@@ -1,0 +1,11 @@
+*.mat
+results
+data*
+todo*
+proximodistalmaturation*
+dealiasing*
+*~
+*.png
+*.tgz
+*.svg
+
