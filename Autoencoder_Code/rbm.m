@@ -22,10 +22,10 @@
 % batchdata -- the data that is divided into batches (numcases numdims numbatches)
 % restart   -- set to 1 if learning starts from beginning 
 
-epsilonw      = 0.1;   % Learning rate for weights 
-epsilonvb     = 0.1;   % Learning rate for biases of visible units 
-epsilonhb     = 0.1;   % Learning rate for biases of hidden units 
-weightcost  = 0.0002;   
+epsilonw      = 0.001;   % Learning rate for weights 
+epsilonvb     = 0.001;   % Learning rate for biases of visible units 
+epsilonhb     = 0.001;   % Learning rate for biases of hidden units 
+weightcost  = 0.002;   
 initialmomentum  = 0.5;
 finalmomentum    = 0.9;
 

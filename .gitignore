@@ -1,0 +1,14 @@
+*~
+.svn
+*copy*
+*.zip
+*data*/*
+*.mat
+*_12*.m
+*_13*.m
+*.orig
+*.bak
+*.graffle
+*.key
+*test*.m
+*temp*.m

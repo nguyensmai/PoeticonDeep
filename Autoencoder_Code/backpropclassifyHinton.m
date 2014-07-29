@@ -68,7 +68,7 @@ l1=size(w1,1)-1;
 l2=size(w2,1)-1;
 l3=size(w3,1)-1;
 l4=size(w_class,1)-1;
-l5=10; 
+l5=size(target,2); 
 test_err=[];
 train_err=[];
 
@@ -81,7 +81,7 @@ err_cr=0;
 counter=0;
 [numcases numdims numbatches]=size(batchdata);
 N=numcases;
- for batch = 1:numbatches
+for batch = 1:numbatches
   data = [batchdata(:,:,batch)];
   target = [batchtargets(:,:,batch)];
   data = [data ones(N,1)];
@@ -101,6 +101,7 @@ N=numcases;
  fprintf(1,'Before epoch %d Train # misclassified: %d (from %d).\n',...
             epoch,train_err(epoch),numcases*numbatches);
 
+        %{
 %%%%%%%%%%%%%% END OF COMPUTING TRAINING MISCLASSIFICATION ERROR %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%% COMPUTE TEST MISCLASSIFICATION ERROR %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -130,33 +131,37 @@ N=numcases;
 %             epoch,train_err(epoch),numcases*numbatches,test_err(epoch),testnumcases*testnumbatches);
 
 %%%%%%%%%%%%%% END OF COMPUTING TEST MISCLASSIFICATION ERROR %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+%}
+            
  tt=0;
- for batch = 1:numbatches/10
+ batch=1;
+ %for batch = 1:numbatches/10
  fprintf(1,'epoch %d batch %d\r',epoch,batch);
 
+ %{
 %%%%%%%%%%% COMBINE 10 MINIBATCHES INTO 1 LARGER MINIBATCH %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
- tt=tt+1; 
- data=[];
- targets=[]; 
- for kk=1:10
-  data=[data 
-        batchdata(:,:,(tt-1)*10+kk)]; 
-  targets=[targets
-        batchtargets(:,:,(tt-1)*10+kk)];
- end 
-
+%  tt=tt+1; 
+%  data=[];
+%  targets=[]; 
+%  for kk=1:10
+%   data=[data 
+%         batchdata(:,:,(tt-1)*10+kk)]; 
+%   targets=[targets
+%         batchtargets(:,:,(tt-1)*10+kk)];
+%  end 
+%}
+ 
 %%%%%%%%%%%%%%% PERFORM CONJUGATE GRADIENT WITH 3 LINESEARCHES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  max_iter=3;
 
-  if epoch<6  % First update top-level weights holding other weights fixed. 
+  if epoch<30  % First update top-level weights holding other weights fixed. 
     N = size(data,1);
-    XX = [data ones(N,1)];
+    XX = [data ];
     w1probs = 1./(1 + exp(-XX*w1)); w1probs = [w1probs  ones(N,1)];
     w2probs = 1./(1 + exp(-w1probs*w2)); w2probs = [w2probs ones(N,1)];
-    w3probs = 1./(1 + exp(-w2probs*w3)); %w3probs = [w3probs  ones(N,1)];
+    w3probs = 1./(1 + exp(-w2probs*w3)); w3probs = [w3probs  ones(N,1)];
 
     VV = [w_class(:)']';
+    max_iter=2*nTargets;
     Dim = [l4; l5];
     [X, fX] = minimize(VV,'CG_CLASSIFY_INIT',max_iter,Dim,w3probs,targets);
     w_class = reshape(X,l4+1,l5);
@@ -164,6 +169,7 @@ N=numcases;
   else
     VV = [w1(:)' w2(:)' w3(:)' w_class(:)']';
     Dim = [l1; l2; l3; l4; l5];
+    max_iter=10*nTargets;
     [X, fX] = minimize(VV,'CG_CLASSIFY',max_iter,Dim,data,targets);
 
     w1 = reshape(X(1:(l1+1)*l2),l1+1,l2);
@@ -177,7 +183,7 @@ N=numcases;
   end
 %%%%%%%%%%%%%%% END OF CONJUGATE GRADIENT WITH 3 LINESEARCHES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
- end
+ %end
 
  save mnistclassify_weights w1 w2 w3 w_class
  save mnistclassify_error  train_err train_crerr;
