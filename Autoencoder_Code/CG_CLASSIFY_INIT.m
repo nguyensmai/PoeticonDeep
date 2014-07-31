@@ -23,12 +23,14 @@ N = size(w3probs,1);
   w_class = reshape(VV,l1+1,l2);
   w3probs = [w3probs ];  
 
-  targetout = exp(w3probs*w_class);
-  targetout = targetout./repmat(sum(targetout,2),1,l5);
-  f = -sum(sum( target(:,1:end).*log(targetout))) ;
+  targetout = (w3probs*w_class);
+%   targetout = exp(w3probs*w_class);
+%   targetout = targetout./repmat(sum(targetout,2),1,l5);
+%  f = -sum(sum( target(:,1:end).*log(targetout))) ;
+f= sum(sum((target-targetout).^2));
 IO = (targetout-target(:,1:end));
 Ix_class=IO; 
 dw_class =  w3probs'*Ix_class; 
 
-df = [dw_class(:)']'; 
+df = [0.1*dw_class(:)']'; 
 

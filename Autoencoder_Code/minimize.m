@@ -148,7 +148,7 @@ while i < abs(length)                                      % while not finished
   else
     X = X0; f0 = F0; df0 = dF0;                     % restore best point so far
     if ls_failed || i > abs(length)         % line search failed twice in a row
-      break;                             % or we ran out of time, so we give up
+      return;                             % or we ran out of time, so we give up
     end
     s = -df0; d0 = -s'*s;                                        % try steepest
     x3 = 1/(1-d0);                     

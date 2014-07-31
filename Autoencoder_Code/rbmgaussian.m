@@ -72,7 +72,8 @@ for epoch = epoch:maxepoch,
   poshidstates = poshidprobs > rand(numcases,numhid);
 
 %%%%%%%%% START NEGATIVE PHASE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  negmu    = 1./(1 + exp(-poshidstates*vishid' - repmat(visbiases,numcases,1)));
+%  negmu    = 1./(1 + exp(-poshidstates*vishid' - repmat(visbiases,numcases,1)));
+  negmu    = poshidstates*vishid' + repmat(visbiases,numcases,1);
   std = repmat(sqrt(exp(z)), numcases,1);
   negdata  = random('norm', negmu, std);
   neghidprobs = 1./(1 + exp(-negdata*vishid - repmat(hidbiases,numcases,1)));    

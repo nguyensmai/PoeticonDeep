@@ -15,7 +15,7 @@
 % This program fine-tunes an autoencoder with backpropagation.
 % Weights of the autoencoder are going to be saved in mnist_weights.mat
 % and trainig and test reconstruction errors in mnist_error.mat
-% You can also set maxepoch, default value is 200 as in our paper.  
+% You can also set maxepoch, default value is 200 as in our paper.
 
 maxepoch=200;
 fprintf(1,'\nTraining discriminative model on MNIST by minimizing cross entropy error. \n');
@@ -45,14 +45,14 @@ batchtargets = targets;
 %   batchtargets(:,:,b) = targets(randomorder(1+(b-1)*batchsize:b*batchsize), :);
 % end;
 
-%%% Reset random seeds 
-rand('state',sum(100*clock)); 
-randn('state',sum(100*clock)); 
+%%% Reset random seeds
+rand('state',sum(100*clock));
+randn('state',sum(100*clock));
 nTargets =9;
 
 %%
 [numcases numdims numbatches]=size(batchdata);
-N=numcases; 
+N=numcases;
 
 %%%% PREINITIALIZE WEIGHTS OF THE DISCRIMINATIVE MODEL%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -60,7 +60,7 @@ w1=[vishid; hidrecbiases];
 w2=[hidpen; penrecbiases];
 w3=[hidpen2; penrecbiases2];
 w_class = 0.1*randn(size(w3,2)+1,nTargets);
- 
+
 
 %%%%%%%%%% END OF PREINITIALIZATIO OF WEIGHTS  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -68,40 +68,41 @@ l1=size(w1,1)-1;
 l2=size(w2,1)-1;
 l3=size(w3,1)-1;
 l4=size(w_class,1)-1;
-l5=size(target,2); 
+l5=size(target,2);
 test_err=[];
 train_err=[];
 
 
 for epoch = 1:maxepoch
+    
+    %%%%%%%%%%%%%%%%%%%% COMPUTE TRAINING MISCLASSIFICATION ERROR %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    err=0;
+    err_cr=0;
+    counter=0;
+    [numcases numdims numbatches]=size(batchdata);
+    N=numcases;
+    for batch = 1:numbatches
+        data = [batchdata(:,:,batch)];
+        target = [batchtargets(:,:,batch)];
+        data = [data ones(N,1)];
+        w1probs = 1./(1 + exp(-data*w1)); w1probs = [w1probs  ones(N,1)];
+        w2probs = 1./(1 + exp(-w1probs*w2)); w2probs = [w2probs ones(N,1)];
+        w3probs = 1./(1 + exp(-w2probs*w3)); w3probs = [w3probs  ones(N,1)];
+%         targetout = exp(w3probs*w_class);
+%         targetout = targetout./repmat(sum(targetout,2),1,nTargets);
+        targetout = (w3probs*w_class);
 
-%%%%%%%%%%%%%%%%%%%% COMPUTE TRAINING MISCLASSIFICATION ERROR %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-err=0; 
-err_cr=0;
-counter=0;
-[numcases numdims numbatches]=size(batchdata);
-N=numcases;
-for batch = 1:numbatches
-  data = [batchdata(:,:,batch)];
-  target = [batchtargets(:,:,batch)];
-  data = [data ones(N,1)];
-  w1probs = 1./(1 + exp(-data*w1)); w1probs = [w1probs  ones(N,1)];
-  w2probs = 1./(1 + exp(-w1probs*w2)); w2probs = [w2probs ones(N,1)];
-  w3probs = 1./(1 + exp(-w2probs*w3)); w3probs = [w3probs  ones(N,1)];
-  targetout = exp(w3probs*w_class);
-  targetout = targetout./repmat(sum(targetout,2),1,nTargets);
-
-  [I J]=max(targetout,[],2);
-  [I1 J1]=max(target,[],2);
-  counter=counter+length(find(J==J1));
-  err_cr = err_cr- sum(sum( target(:,1:end).*log(targetout))) ;
- end
- train_err(epoch)=(numcases*numbatches-counter);
- train_crerr(epoch)=err_cr/numbatches;
- fprintf(1,'Before epoch %d Train # misclassified: %d (from %d).\n',...
-            epoch,train_err(epoch),numcases*numbatches);
-
-        %{
+        [I J]=max(targetout,[],2);
+        [I1 J1]=max(target,[],2);
+        counter=counter+length(find(J==J1));
+        err_cr = err_cr- sum(sum( target(:,1:end).*log(targetout))) ;
+    end
+    train_err(epoch)=(numcases*numbatches-counter);
+    train_crerr(epoch)=err_cr/numbatches;
+    fprintf(1,'Before epoch %d Train # misclassified: %d (from %d).\n',...
+        epoch,train_err(epoch),numcases*numbatches);
+    
+    %{
 %%%%%%%%%%%%%% END OF COMPUTING TRAINING MISCLASSIFICATION ERROR %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%% COMPUTE TEST MISCLASSIFICATION ERROR %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -119,7 +120,7 @@ for batch = 1:numbatches
 %   w3probs = 1./(1 + exp(-w2probs*w3)); w3probs = [w3probs  ones(N,1)];
 %   targetout = exp(w3probs*w_class);
 %   targetout = targetout./repmat(sum(targetout,2),1,nTargets);
-% 
+%
 %   [I J]=max(targetout,[],2);
 %   [I1 J1]=max(target,[],2);
 %   counter=counter+length(find(J==J1));
@@ -131,63 +132,63 @@ for batch = 1:numbatches
 %             epoch,train_err(epoch),numcases*numbatches,test_err(epoch),testnumcases*testnumbatches);
 
 %%%%%%%%%%%%%% END OF COMPUTING TEST MISCLASSIFICATION ERROR %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%}
-            
- tt=0;
- batch=1;
- %for batch = 1:numbatches/10
- fprintf(1,'epoch %d batch %d\r',epoch,batch);
-
- %{
+        %}
+        
+        tt=0;
+        batch=1;
+        %for batch = 1:numbatches/10
+        fprintf(1,'epoch %d batch %d\r',epoch,batch);
+        
+        %{
 %%%%%%%%%%% COMBINE 10 MINIBATCHES INTO 1 LARGER MINIBATCH %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%  tt=tt+1; 
+%  tt=tt+1;
 %  data=[];
-%  targets=[]; 
+%  targets=[];
 %  for kk=1:10
-%   data=[data 
-%         batchdata(:,:,(tt-1)*10+kk)]; 
+%   data=[data
+%         batchdata(:,:,(tt-1)*10+kk)];
 %   targets=[targets
 %         batchtargets(:,:,(tt-1)*10+kk)];
-%  end 
-%}
- 
-%%%%%%%%%%%%%%% PERFORM CONJUGATE GRADIENT WITH 3 LINESEARCHES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-  if epoch<30  % First update top-level weights holding other weights fixed. 
-    N = size(data,1);
-    XX = [data ];
-    w1probs = 1./(1 + exp(-XX*w1)); w1probs = [w1probs  ones(N,1)];
-    w2probs = 1./(1 + exp(-w1probs*w2)); w2probs = [w2probs ones(N,1)];
-    w3probs = 1./(1 + exp(-w2probs*w3)); w3probs = [w3probs  ones(N,1)];
-
-    VV = [w_class(:)']';
-    max_iter=2*nTargets;
-    Dim = [l4; l5];
-    [X, fX] = minimize(VV,'CG_CLASSIFY_INIT',max_iter,Dim,w3probs,targets);
-    w_class = reshape(X,l4+1,l5);
-
-  else
-    VV = [w1(:)' w2(:)' w3(:)' w_class(:)']';
-    Dim = [l1; l2; l3; l4; l5];
-    max_iter=10*nTargets;
-    [X, fX] = minimize(VV,'CG_CLASSIFY',max_iter,Dim,data,targets);
-
-    w1 = reshape(X(1:(l1+1)*l2),l1+1,l2);
-    xxx = (l1+1)*l2;
-    w2 = reshape(X(xxx+1:xxx+(l2+1)*l3),l2+1,l3);
-    xxx = xxx+(l2+1)*l3;
-    w3 = reshape(X(xxx+1:xxx+(l3+1)*l4),l3+1,l4);
-    xxx = xxx+(l3+1)*l4;
-    w_class = reshape(X(xxx+1:xxx+(l4+1)*l5),l4+1,l5);
-
-  end
-%%%%%%%%%%%%%%% END OF CONJUGATE GRADIENT WITH 3 LINESEARCHES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
- %end
-
- save mnistclassify_weights w1 w2 w3 w_class
- save mnistclassify_error  train_err train_crerr;
-
+%  end
+        %}
+        
+        %%%%%%%%%%%%%%% PERFORM CONJUGATE GRADIENT WITH 3 LINESEARCHES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
+        if epoch<30  % First update top-level weights holding other weights fixed.
+            N = size(data,1);
+            XX = [data ];
+            w1probs = 1./(1 + exp(-XX*w1)); w1probs = [w1probs  ones(N,1)];
+            w2probs = 1./(1 + exp(-w1probs*w2)); w2probs = [w2probs ones(N,1)];
+            w3probs = 1./(1 + exp(-w2probs*w3)); w3probs = [w3probs  ones(N,1)];
+            
+            VV = [w_class(:)']';
+            max_iter=2*nTargets;
+            Dim = [l4; l5];
+            [X, fX] = minimize(VV,'CG_CLASSIFY_INIT',max_iter,Dim,w3probs,targets);
+            w_class = reshape(X,l4+1,l5);
+            
+        else
+            VV = [w1(:)' w2(:)' w3(:)' w_class(:)']';
+            Dim = [l1; l2; l3; l4; l5];
+            max_iter=10*nTargets;
+            [X, fX] = minimize(VV,'CG_CLASSIFY',max_iter,Dim,data,targets);
+            
+            w1 = reshape(X(1:(l1+1)*l2),l1+1,l2);
+            xxx = (l1+1)*l2;
+            w2 = reshape(X(xxx+1:xxx+(l2+1)*l3),l2+1,l3);
+            xxx = xxx+(l2+1)*l3;
+            w3 = reshape(X(xxx+1:xxx+(l3+1)*l4),l3+1,l4);
+            xxx = xxx+(l3+1)*l4;
+            w_class = reshape(X(xxx+1:xxx+(l4+1)*l5),l4+1,l5);
+            
+        end
+        %%%%%%%%%%%%%%% END OF CONJUGATE GRADIENT WITH 3 LINESEARCHES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
+        %end
+        
+        save mnistclassify_weights w1 w2 w3 w_class
+        save mnistclassify_error  train_err train_crerr;
+        
 end
 
 

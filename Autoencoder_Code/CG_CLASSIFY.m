@@ -37,9 +37,11 @@ N = size(XX,1);
   w2probs = 1./(1 + exp(-w1probs*w2)); w2probs = [w2probs ones(N,1)];
   w3probs = 1./(1 + exp(-w2probs*w3)); w3probs = [w3probs  ones(N,1)];
 
-  targetout = exp(w3probs*w_class);
-  targetout = targetout./repmat(sum(targetout,2),1,l5);
-  f = -sum(sum( target(:,1:end).*log(targetout))) ;
+  targetout = (w3probs*w_class);
+%   targetout = exp(w3probs*w_class);
+%   targetout = targetout./repmat(sum(targetout,2),1,l5);
+%  f = -sum(sum( target(:,1:end).*log(targetout))) ;
+f= sum(sum((target-targetout).^2));
 
 IO = (targetout-target(:,1:end));
 Ix_class=IO; 

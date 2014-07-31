@@ -58,16 +58,19 @@ batchtargets = targets;
 %%% Reset random seeds 
 rand('state',sum(100*clock)); 
 randn('state',sum(100*clock)); 
+save temp_batch
 
 
 %% train each layer with rbm
 
+maxepoch=10000; 
 fprintf(1,'Pretraining Layer 1 with RBM: %d-%d \n',numdims,numhid);
 restart=1;
 rbmgaussian;
 hidrecbiases=hidbiases; 
 save mnistvhclassify vishid hidrecbiases visbiases;
 
+maxepoch=3000; 
 fprintf(1,'\nPretraining Layer 2 with RBM: %d-%d \n',numhid,numpen);
 batchdata=batchposhidprobs;
 numhid=numpen;
@@ -88,4 +91,4 @@ save mnisthp2classify hidpen2 penrecbiases2 hidgenbiases2;
 %%
 backpropclassifyHinton; 
 
-
+plotWeights;
