@@ -1,14 +1,17 @@
 P = path();
-path(P,'../../dmp_bbo_matlab_deprecated-master_deprecated/dynamicmovementprimitive')
-path(P,'../../Autoencoder_Code')
+P = path(P,'../../dmp_bbo_matlab_deprecated-master_deprecated/dynamicmovementprimitive');
+path(P,'../../Autoencoder_Code');
 digitdata=[];
 targets=[];
 
-maxepoch=2000; 
-numhid=500; numpen=1000; numpen2=1000; 
+maxepoch=2000;
+numhid=500; numpen=1000; numpen2=1000;
 
 
 %% display the numbers of the data
+order = 3;
+n_basis_functions = 100;
+
 for iDigit=1:9
     for iSample=1:nSamples(iDigit)
         
@@ -22,16 +25,20 @@ for iDigit=1:9
         trajectory.ydd = [zeros(1,d);ydd];
         
         
-        order = 3;
-        n_basis_functions = 100;
+        figure(1)
         subplot(9,max(nSamples), (iDigit-1)*max(nSamples) +iSample)
         [ theta y0 g0 ] = dmptrain(trajectory,order,n_basis_functions);
         digitdata = [digitdata; theta(:)'];
         target = zeros(1,9);
         target(iDigit) = 1;
-        targets = [targets; target]; 
+        targets = [targets; target];
         hold on
         plot( data{iDigit,iSample}{1},data{iDigit,iSample}{2},'-r')
+        figure(2)
+        subplot(9,max(nSamples), (iDigit-1)*max(nSamples) +iSample)
+        [ trajectory ] = dmpintegrate([ 0 1],[ 1 0],theta,time,dt,time_exec,order);
+        hold on
+        handle = plot(trajectory.y(:,1,1),trajectory.y(:,2,1));
     end
 end
 
@@ -55,22 +62,22 @@ batchtargets = targets;
 %   batchtargets(:,:,b) = targets(randomorder(1+(b-1)*batchsize:b*batchsize), :);
 % end;
 
-%%% Reset random seeds 
-rand('state',sum(100*clock)); 
-randn('state',sum(100*clock)); 
+%%% Reset random seeds
+rand('state',sum(100*clock));
+randn('state',sum(100*clock));
 save temp_batch
 
 
 %% train each layer with rbm
 
-maxepoch=10000; 
+maxepoch=7000;
 fprintf(1,'Pretraining Layer 1 with RBM: %d-%d \n',numdims,numhid);
 restart=1;
 rbmgaussian;
-hidrecbiases=hidbiases; 
+hidrecbiases=hidbiases;
 save mnistvhclassify vishid hidrecbiases visbiases;
 
-maxepoch=3000; 
+maxepoch=2000;
 fprintf(1,'\nPretraining Layer 2 with RBM: %d-%d \n',numhid,numpen);
 batchdata=batchposhidprobs;
 numhid=numpen;
@@ -89,6 +96,6 @@ save mnisthp2classify hidpen2 penrecbiases2 hidgenbiases2;
 
 
 %%
-backpropclassifyHinton; 
+backpropclassifyHinton;
 
 plotWeights;

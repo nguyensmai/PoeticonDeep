@@ -49,7 +49,6 @@ if restart ==1,
   hidbiasinc = zeros(1,numhid);
   visbiasinc = zeros(1,numdims);
   batchposhidprobs=zeros(numcases,numhid,numbatches);
-%   variance = ones(numcases,numdims);
   z= zeros(1,numdims);
   figure;
 end
