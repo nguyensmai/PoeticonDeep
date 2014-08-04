@@ -21,6 +21,7 @@
 % numhid    -- number of hidden units 
 % batchdata -- the data that is divided into batches (numcases numdims numbatches)
 % restart   -- set to 1 if learning starts from beginning 
+function [vishid, hidbiases, visbiases,batchposhidprobs,restart] = rbmgaussian(batchdata,numhid,maxepoch, restart)
 
 epsilonw      = 0.001;   % Learning rate for weights 
 epsilonvb     = 0.001;   % Learning rate for biases of visible units 
@@ -111,7 +112,7 @@ for epoch = epoch:maxepoch,
   hold on;
 end;
 
-
+end
 
 
 

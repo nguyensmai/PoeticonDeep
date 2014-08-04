@@ -4,6 +4,7 @@ path(P,'../../Autoencoder_Code');
 digitdata=[];
 targets=[];
 
+nTargets = 9;
 maxepoch=2000;
 numhid=500; numpen=1000; numpen2=1000;
 
@@ -73,29 +74,22 @@ save temp_batch
 maxepoch=7000;
 fprintf(1,'Pretraining Layer 1 with RBM: %d-%d \n',numdims,numhid);
 restart=1;
-rbmgaussian;
-hidrecbiases=hidbiases;
+[vishid, hidrecbiases, visbiases,batchposhidprobs, restart] = rbmgaussian(batchdata,numhid,maxepoch,restart);
 save mnistvhclassify vishid hidrecbiases visbiases;
 
 maxepoch=2000;
 fprintf(1,'\nPretraining Layer 2 with RBM: %d-%d \n',numhid,numpen);
-batchdata=batchposhidprobs;
-numhid=numpen;
 restart=1;
-rbm;
-hidpen=vishid; penrecbiases=hidbiases; hidgenbiases=visbiases;
+[hidpen, penrecbiases, hidgenbiases, batchpospenprobs, restart] = rbm(batchposhidprobs,numpen,maxepoch, restart);
 save mnisthpclassify hidpen penrecbiases hidgenbiases;
 
-fprintf(1,'\nPretraining Layer 3 with RBM: %d-%d \n',numpen,numpen2);
-batchdata=batchposhidprobs;
-numhid=numpen2;
+fprintf(1,'\nPretraining Layer 3  (hidden and labels) with RBM: [%d %d]-%d \n',numpen,nTargets,numpen2);
 restart=1;
-rbm;
-hidpen2=vishid; penrecbiases2=hidbiases; hidgenbiases2=visbiases;
+[hidpen2, labtop, penrecbiases2, hidgenbiases2,labbiases, restart] = toprbm(batchpospenprobs,batchtargets,numpen2,nTargets,maxepoch,restart);
 save mnisthp2classify hidpen2 penrecbiases2 hidgenbiases2;
 
 
-%%
-backpropclassifyHinton;
 
-plotWeights;
+%%
+
+topdown;

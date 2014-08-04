@@ -22,10 +22,12 @@
 % batchdata -- the data that is divided into batches (numcases numdims numbatches)
 % restart   -- set to 1 if learning starts from beginning 
 
+function [vishid, hidbiases, visbiases, batchposhidprobs, restart] = rbm(batchdata,numhid,maxepoch, restart)
+
 epsilonw      = 0.001;   % Learning rate for weights 
 epsilonvb     = 0.001;   % Learning rate for biases of visible units 
 epsilonhb     = 0.001;   % Learning rate for biases of hidden units 
-weightcost  = 0.002;   
+weightcost    = 0.002;   
 initialmomentum  = 0.5;
 finalmomentum    = 0.9;
 
@@ -65,10 +67,11 @@ for epoch = epoch:maxepoch,
   posvisact = sum(data);
 
 %%%%%%%%% END OF POSITIVE PHASE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  poshidstates = poshidprobs ; %> rand(numcases,numhid);
+  poshidstates = poshidprobs > rand(numcases,numhid);
 
 %%%%%%%%% START NEGATIVE PHASE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  negdata = 1./(1 + exp(-poshidstates*vishid' - repmat(visbiases,numcases,1)));
+  negdataprobs = 1./(1 + exp(-poshidstates*vishid' - repmat(visbiases,numcases,1)));
+  negdata = negdataprobs > rand(numcases,numdims);
  % negdata =  (poshidstates*vishid') + repmat(visbiases,numcases,1);
   neghidprobs = 1./(1 + exp(-negdata*vishid - repmat(hidbiases,numcases,1)));    
   negprods  = negdata'*neghidprobs;
@@ -100,3 +103,5 @@ for epoch = epoch:maxepoch,
   end
   fprintf(1, 'epoch %4i error %6.1f  \n', epoch, errsum); 
 end;
+
+end
