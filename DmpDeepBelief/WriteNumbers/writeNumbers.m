@@ -3,10 +3,7 @@ P = path(P,'../../dmp_bbo_matlab_deprecated-master_deprecated/dynamicmovementpri
 path(P,'../../Autoencoder_Code');
 digitdata=[];
 targets=[];
-
 nTargets = 9;
-maxepoch=2000;
-numhid=500; numpen=1000; numpen2=1000;
 
 
 %% display the numbers of the data
@@ -30,7 +27,7 @@ for iDigit=1:9
         subplot(9,max(nSamples), (iDigit-1)*max(nSamples) +iSample)
         [ theta y0 g0 ] = dmptrain(trajectory,order,n_basis_functions);
         digitdata = [digitdata; theta(:)'];
-        target = zeros(1,9);
+        target = zeros(1,nTargets);
         target(iDigit) = 1;
         targets = [targets; target];
         hold on
@@ -69,27 +66,54 @@ randn('state',sum(100*clock));
 save temp_batch
 
 
+%% create the dbn
+maxepoch=2000;
+numhid=500; numpen=1000; numpen2=1000;
+nodes = [numdims numhid numpen numpen2];
+dbn = randDBN(nodes,nTargets,'GBRBM');
+
+
 %% train each layer with rbm
 
-maxepoch=7000;
+maxepoch=6000;
 fprintf(1,'Pretraining Layer 1 with RBM: %d-%d \n',numdims,numhid);
 restart=1;
-[vishid, hidrecbiases, visbiases,batchposhidprobs, restart] = rbmgaussian(batchdata,numhid,maxepoch,restart);
-save mnistvhclassify vishid hidrecbiases visbiases;
+[dbn.rbm{1},batchposhidprobs] = rbmgaussian(batchdata,dbn.rbm{1},maxepoch,restart);
+title('layer1');
+save layer1 dbn
 
-maxepoch=2000;
+maxepoch=3000;
 fprintf(1,'\nPretraining Layer 2 with RBM: %d-%d \n',numhid,numpen);
 restart=1;
-[hidpen, penrecbiases, hidgenbiases, batchpospenprobs, restart] = rbm(batchposhidprobs,numpen,maxepoch, restart);
-save mnisthpclassify hidpen penrecbiases hidgenbiases;
+[dbn.rbm{2}, batchpospenprobs] = rbmsigmoid(batchposhidprobs,dbn.rbm{2},maxepoch, restart);
+title('layer2');
+save layer2 dbn;
 
+maxepoch=200;
 fprintf(1,'\nPretraining Layer 3  (hidden and labels) with RBM: [%d %d]-%d \n',numpen,nTargets,numpen2);
 restart=1;
-[hidpen2, labtop, penrecbiases2, hidgenbiases2,labbiases, restart] = toprbm(batchpospenprobs,batchtargets,numpen2,nTargets,maxepoch,restart);
-save mnisthp2classify hidpen2 penrecbiases2 hidgenbiases2;
+[dbn.rbm{3}] = toprbm(batchpospenprobs,batchtargets,dbn.rbm{3},maxepoch,restart);
+save layer3 dbn;
 
 
 
 %%
+figure
+for epoch=1:100
+    [dbn, errsum, err1,err2] = updown(batchdata,targets,dbn);
+    plot(epoch, errsum,'xb');
+    hold on; 
+    plot(epoch, err1,'xg');
+    plot(epoch, err2,'xr');
+end
 
-topdown;
+
+%% testing
+figure(3)
+for label=1:9
+visible = generativeModel(dbn,label)
+subplot(3,3, label)
+[ trajectory ] = dmpintegrate([ 0 1],[ 1 0],visible,time,dt,time_exec,order);
+hold on
+handle = plot(trajectory.y(:,1,1),trajectory.y(:,2,1));
+end

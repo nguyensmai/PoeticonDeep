@@ -21,7 +21,7 @@
 % numtop    -- number of hidden units
 % batchdata -- the data that is divided into batches (numcases numdims numbatches)
 % restart   -- set to 1 if learning starts from beginning
-function [hidtop, labtop, topbiases, hidbiases, labbiases, restart] = toprbm(batchdata,batchtargets,numtop,nTargets,maxepoch,restart)
+function [rbm] = toprbm(batchdata,batchtargets,rbm,maxepoch,restart)
 
 epsilonwv     = 0.0001;   % Learning rate for weights
 epsilonwl     = 0.0001;   % Learning rate for weights
@@ -29,39 +29,43 @@ epsilonvb     = 0.0001;   % Learning rate for biases of visible units
 epsilonhb     = 0.0001;   % Learning rate for biases of hidden units
 epsilonlb     = 0.0001;   % Learning rate for biases of label units
 weightcost  = 0.0002;
-initialmomentum  = 0.1;
-finalmomentum    = 0.5;
+initialmomentum  = 0.5;
+finalmomentum    = 0.9;
 numCDiters =50;
 [numcases numdims numbatches]=size(batchdata);
+nTargets= length(rbm.labbiases);
+numtop = length(rbm.topbiases);
+epoch=1;
 
 if restart ==1,
-    restart=0;
-    epoch=1;
-    
     % Initializing symmetric weights and biases.
-    hidtop     = 0.1*randn(numdims, numtop);
-    hidbiases  = zeros(1,numdims);
-    
-    labtop     = 0.1*randn(nTargets,numtop);
-    labbiases  = zeros(1,nTargets);
-    
-    topbiases  = zeros(1,numtop);
-    
-    
-    
-    postopprobs = zeros(numcases,numtop);
-    negtopprobs = zeros(numcases,numtop);
-    posprods    = zeros(numdims,numtop);
-    negprods    = zeros(numdims,numtop);
-    hidtopinc   = zeros(numdims,numtop);
-    labtopinc   = zeros(nTargets,numtop);
-    hidbiasinc  = zeros(1,numtop);
-    hidbiasinc  = zeros(1,numdims);
-    labbiasinc  = zeros(1,nTargets);
-    batchpostopprobs=zeros(numcases,numtop,numbatches);
-    figure
-    title('toprbm');
+    rbm = assocRBM(length(rbm.hidbiases), length(rbm.topbiases), length(rbm.labbiases));
 end
+
+
+% Initializing symmetric weights and biases.
+hidtop    = rbm.hidtop;
+hidbiases = rbm.hidbiases;
+
+labtop    = rbm.labtop;
+labbiases = rbm.labbiases;
+
+topbiases = rbm.topbiases;
+
+
+
+postopprobs = zeros(numcases,numtop);
+negtopprobs = zeros(numcases,numtop);
+posprods    = zeros(numdims,numtop);
+negprods    = zeros(numdims,numtop);
+hidtopinc   = zeros(numdims,numtop);
+labtopinc   = zeros(nTargets,numtop);
+hidbiasinc  = zeros(1,numtop);
+hidbiasinc  = zeros(1,numdims);
+labbiasinc  = zeros(1,nTargets);
+batchpostopprobs=zeros(numcases,numtop,numbatches);
+figure
+title('toprbm');
 
 %fprintf(1,'epoch %d\r',epoch);
 for batch = 1:numbatches,
