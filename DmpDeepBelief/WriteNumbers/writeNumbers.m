@@ -1,3 +1,5 @@
+
+n_basis_functions = 50;
 P = path();
 P = path(P,'../../dmp_bbo_matlab_deprecated-master_deprecated/dynamicmovementprimitive');
 path(P,'../../Autoencoder_Code');
@@ -8,7 +10,6 @@ nTargets = 9;
 
 %% display the numbers of the data
 order = 3;
-n_basis_functions = 100;
 
 for iDigit=1:9
     for iSample=1:nSamples(iDigit)
@@ -41,19 +42,25 @@ for iDigit=1:9
 end
 
 
+
 %% create batches
 totnum=size(digitdata,1);
-randomorder=randperm(totnum);
+% randomorder=randperm(totnum);
 numbatches=  1;
 numdims  =  size(digitdata,2);
 batchsize = totnum;
 
 batchdata = zeros(batchsize, numdims, numbatches);
-batchtargets = zeros(batchsize, 10, numbatches);
+batchtargets = zeros(batchsize, nTargets, numbatches);
 
-maxd = max(digitdata);
-mind = min(digitdata);
-batchdata = (digitdata-repmat(mind,batchsize,1))./(repmat(maxd,batchsize,1)-repmat(mind,batchsize,1));
+maxdx = max(max(digitdata(:,1:50)));
+mindx = min(min(digitdata(:,1:50)));
+maxdy = max(max(digitdata(:,51:100)));
+mindy = min(min(digitdata(:,51:100)));
+batchdata = [
+    (digitdata(:,1:50)  -mindx)./(maxdx-mindx), ...
+    (digitdata(:,51:100)-mindy)./(maxdy-mindy)
+    ];
 batchtargets = targets;
 % for b=1:numbatches
 %   batchdata(:,:,b) = digitdata(randomorder(1+(b-1)*batchsize:b*batchsize), :);
@@ -65,55 +72,64 @@ rand('state',sum(100*clock));
 randn('state',sum(100*clock));
 save temp_batch
 
+%% check the data batches
+figure('name',num2str(n_basis_functions))
+for iSample=1:totnum
+    visible= batchdata(iSample,:);
+    visible = visible + 0.01*rand(size(visible)); %testing stability
+    visible = visible.*[(maxdx-mindx)*ones(1,n_basis_functions) (maxdy-mindy)*ones(1,n_basis_functions)] ...
+        +[mindx*ones(1,n_basis_functions) mindy*ones(1,n_basis_functions)];
+    visible = reshape(visible,2,n_basis_functions);
+    subplot(9,ceil(totnum/9), iSample)
+    iDigit=find(batchtargets(iSample,:)>0);
+    [ trajectory ] = dmpintegrate([ data{iDigit,1}{1}(1) data{iDigit,1}{2}(1)],...
+        [data{iDigit,1}{1}(end) data{iDigit,1}{1}(end) ],visible,time,dt,time_exec,order);
+    hold on
+    handle = plot(trajectory.y(:,1,1),trajectory.y(:,2,1));
+    title(find(batchtargets(iSample,:)>0))
+end
 
 %% create the dbn
-maxepoch=2000;
-numhid=500; numpen=1000; numpen2=1000;
+maxepoch=1000;
+numhid=50; numpen=50; numpen2=100;
 nodes = [numdims numhid numpen numpen2];
 dbn = randDBN(nodes,nTargets,'GBRBM');
 
 
-%% train each layer with rbm
+%% train each rbm with contrastive-divergence
 
-maxepoch=6000;
+maxepoch=1000;
 fprintf(1,'Pretraining Layer 1 with RBM: %d-%d \n',numdims,numhid);
 restart=1;
-[dbn.rbm{1},batchposhidprobs] = rbmgaussian(batchdata,dbn.rbm{1},maxepoch,restart);
+[dbn.rbm{1},poshidstates, errL1] = rbmgaussian(batchdata,dbn.rbm{1},maxepoch,restart);
 title('layer1');
-save layer1 dbn
+save layer1
 
-maxepoch=3000;
+maxepoch=1000;
 fprintf(1,'\nPretraining Layer 2 with RBM: %d-%d \n',numhid,numpen);
 restart=1;
-[dbn.rbm{2}, batchpospenprobs] = rbmsigmoid(batchposhidprobs,dbn.rbm{2},maxepoch, restart);
+[dbn.rbm{2}, batchpospenprobs,errL2] = rbmsigmoid(poshidstates,dbn.rbm{2},maxepoch, restart);
 title('layer2');
-save layer2 dbn;
+save layer2;
 
-maxepoch=200;
+maxepoch=1000;
 fprintf(1,'\nPretraining Layer 3  (hidden and labels) with RBM: [%d %d]-%d \n',numpen,nTargets,numpen2);
 restart=1;
-[dbn.rbm{3}] = toprbm(batchpospenprobs,batchtargets,dbn.rbm{3},maxepoch,restart);
-save layer3 dbn;
+[dbn.rbm{3},errL3] = toprbm(batchpospenprobs,batchtargets,dbn.rbm{3},maxepoch,restart);
+save layer3;
 
 
 
-%%
-figure
-for epoch=1:100
-    [dbn, errsum, err1,err2] = updown(batchdata,targets,dbn);
-    plot(epoch, errsum,'xb');
-    hold on; 
-    plot(epoch, err1,'xg');
-    plot(epoch, err2,'xr');
-end
-
+%% up-down algorithm
+dbn = untie(dbn);
+[dbn, errLUD] = updown(batchdata,batchtargets,dbn, maxepoch);
 
 %% testing
-figure(3)
+figure
 for label=1:9
-visible = generativeModel(dbn,label)
-subplot(3,3, label)
-[ trajectory ] = dmpintegrate([ 0 1],[ 1 0],visible,time,dt,time_exec,order);
-hold on
-handle = plot(trajectory.y(:,1,1),trajectory.y(:,2,1));
+    visible = reshape(generativeModel(dbn,label).*(maxd-mind)+mind,2,n_basis_functions);
+    subplot(3,3, label)
+    [ trajectory ] = dmpintegrate([ 0 1],[ 1 0],visible,time,dt,time_exec,order);
+    hold on
+    handle = plot(trajectory.y(:,1,1),trajectory.y(:,2,1));
 end

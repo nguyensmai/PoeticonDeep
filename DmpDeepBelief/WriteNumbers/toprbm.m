@@ -21,21 +21,20 @@
 % numtop    -- number of hidden units
 % batchdata -- the data that is divided into batches (numcases numdims numbatches)
 % restart   -- set to 1 if learning starts from beginning
-function [rbm] = toprbm(batchdata,batchtargets,rbm,maxepoch,restart)
+function [rbm,errList] = toprbm(batchdata,batchtargets,rbm,maxepoch,restart)
 
-epsilonwv     = 0.0001;   % Learning rate for weights
-epsilonwl     = 0.0001;   % Learning rate for weights
-epsilonvb     = 0.0001;   % Learning rate for biases of visible units
-epsilonhb     = 0.0001;   % Learning rate for biases of hidden units
-epsilonlb     = 0.0001;   % Learning rate for biases of label units
-weightcost  = 0.0002;
+epsilonwv1     = 0.1;   % Learning rate for weights between the top and the hidden
+epsilonwl1     = 0.1;   % Learning rate for weights between the top and the labels
+epsilontb1     = 0.1;   % Learning rate for biases of top units
+epsilonhb1     = 0.1;   % Learning rate for biases of hidden units
+epsilonlb1     = 0.1;   % Learning rate for biases of label units
+weightcost  = 0.02;
 initialmomentum  = 0.5;
 finalmomentum    = 0.9;
-numCDiters =50;
 [numcases numdims numbatches]=size(batchdata);
 nTargets= length(rbm.labbiases);
 numtop = length(rbm.topbiases);
-epoch=1;
+errList=[];
 
 if restart ==1,
     % Initializing symmetric weights and biases.
@@ -60,87 +59,128 @@ posprods    = zeros(numdims,numtop);
 negprods    = zeros(numdims,numtop);
 hidtopinc   = zeros(numdims,numtop);
 labtopinc   = zeros(nTargets,numtop);
-hidbiasinc  = zeros(1,numtop);
+topbiasinc  = zeros(1,numtop);
 hidbiasinc  = zeros(1,numdims);
 labbiasinc  = zeros(1,nTargets);
-batchpostopprobs=zeros(numcases,numtop,numbatches);
-figure
-title('toprbm');
+figure('name','toprbm')
+title('toprbm error');
+hold on
 
-%fprintf(1,'epoch %d\r',epoch);
-for batch = 1:numbatches,
-    %fprintf(1,'epoch %d batch %d\r',epoch,batch);
-    for epoch = epoch:maxepoch
+%%fprintf(1,'epoch %d\r',epoch);
+%fprintf(1,'epoch %d batch %d\r',epoch,batch);
+for epoch = 1:maxepoch
+    errsum=0;
+    numCDiters = ceil(epoch/20); %min([ceil(sqrt(epoch)) numCDitersMax]);
+    time = epoch;%-(numCDiters-1)^2;
+    if time>50,
+        momentum=finalmomentum;
+        epsilonwv     = epsilonwv1/(numCDiters*log2(epoch));   % Learning rate for weights between the top and the hidden
+        epsilonwl     = epsilonwl1/(numCDiters*log2(epoch));   % Learning rate for weights between the top and the labels
+        epsilontb     = epsilontb1/(numCDiters*log2(epoch));   % Learning rate for biases of top units
+        epsilonhb     = epsilonhb1/(numCDiters*log2(epoch));   % Learning rate for biases of hidden units
+        epsilonlb     = epsilonlb1/(numCDiters*log2(epoch));   % Learning rate for biases of label units
+        
+    else
+        momentum=initialmomentum;
+        epsilonwv     = epsilonwv1/numCDiters;   % Learning rate for weights between the top and the hidden
+        epsilonwl     = epsilonwl1/numCDiters;   % Learning rate for weights between the top and the labels
+        epsilontb     = epsilontb1/numCDiters;   % Learning rate for biases of top units
+        epsilonhb     = epsilonhb1/numCDiters;   % Learning rate for biases of hidden units
+        epsilonlb     = epsilonlb1/numCDiters;   % Learning rate for biases of label units
+    end;
+    
+    
+    for batch = 1:numbatches,
         
         data = batchdata(:,:,batch);
         targets = batchtargets(:,:,batch);
-        errsum=0;
         
+        %%%%%%%%% START POSITIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        postopprobs = 1./(1 + exp(-data*hidtop -targets*labtop - repmat(topbiases,numcases,1)));
+        
+        postopact   = mean(postopprobs);
+        
+        posprods    = data' * postopprobs/numcases;
+        poshidact = mean(data);
+        
+        poslabprods    = targets' * postopprobs/numcases;
+        poslabact = mean(targets);
+        %%%%%%%%% END OF POSITIVE PHASE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        postopprobs_temp=postopprobs;
+        
+        %%%%%%%%% START NEGATIVE PHASE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         for iter=1:numCDiters
             
-            %%%%%%%%% START POSITIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            postopprobs = 1./(1 + exp(-data*hidtop -targets*labtop - repmat(topbiases,numcases,1)));
-            batchpostopprobs(:,:,batch)= postopprobs;
+            postopstates = postopprobs_temp > rand(numcases,numtop);
             
-            postopact   = sum(postopprobs);
-            
-            posprods    = data' * postopprobs;
-            posvisact = sum(data);
-            
-            poslabprods    = targets' *postopprobs;
-            poslabact = sum(targets);
-            %%%%%%%%% END OF POSITIVE PHASE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            
-            poshidstates = postopprobs > rand(numcases,numtop);
-            
-            %%%%%%%%% START NEGATIVE PHASE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            negdataprobs  = 1./(1 + exp(-poshidstates*hidtop' - repmat(hidbiases,numcases,1)));
+            negdataprobs  = 1./(1 + exp(-postopstates*hidtop' - repmat(hidbiases,numcases,1)));
             negdata = negdataprobs > rand(numcases,numdims);
-            % negdata =  (poshidstates*hidtop') + repmat(hidbiases,numcases,1);
-            neglabel = exp(poshidstates*labtop'+repmat(labbiases,numcases,1));
-            neglabel = neglabel./repmat(sum(neglabel,2),1,nTargets);
+            % negdata =  (postopstates*hidtop') + repmat(hidbiases,numcases,1);
+            %             neglabel = exp(postopstates*labtop'+repmat(labbiases,numcases,1));
+            %             neglabel = neglabel./repmat(sum(neglabel,2),1,nTargets);
+            neglabprobs = exp(postopstates*labtop'+repmat(labbiases,numcases,1));
+            neglabprobs = neglabprobs./(sum(neglabprobs,2)*ones(1,nTargets));
+            xx = cumsum(neglabprobs,2);
+            xx1 = rand(numcases,1);
+            neglabel = neglabprobs*0;
+            for jj=1:numcases
+                index = min(find(xx1(jj) <= xx(jj,:)));
+                neglabel(jj,index) = 1;
+            end
+            
             negtopprobs = 1./(1 + exp(-negdata*hidtop -neglabel*labtop - repmat(topbiases,numcases,1)));
-            negtopstates = negtopprobs>rand(numcases, numtop);
-            
-            neghidact = sum(negtopprobs);
-            
-            negprods  = double(negdata')*double(negtopstates);
-            negvisact = sum(negdata);
-            
-            neglabprods  = neglabel'*negtopprobs;
-            neglabact = sum(neglabel);
-            %%%%%%%%% END OF NEGATIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            
-            err1= sum(sum( (data-negdata).^2 ));
-            err2= sum(sum( (targets-neglabel).^2 ));
-            errsum = err1 +err2 + errsum;
-            
-            if epoch>5,
-                momentum=finalmomentum;
-            else
-                momentum=initialmomentum;
-            end;
-            
-            %%%%%%%%% UPDATE WEIGHTS AND BIASES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            hidtopinc = momentum*hidtopinc + ...
-                epsilonwv*( (posprods-negprods)/numcases - weightcost*hidtop);
-            labtopinc = momentum*labtopinc + ...
-                epsilonwl*( (poslabprods-neglabprods)/numcases - weightcost*labtop);
-            hidbiasinc = momentum*hidbiasinc + (epsilonvb/numcases)*(posvisact-negvisact);
-            labbiasinc = momentum*labbiasinc + (epsilonlb/numcases)*(poslabact-neglabact);
-            hidbiasinc = momentum*hidbiasinc + (epsilonhb/numcases)*(postopact-neghidact);
-            
-            hidtop = hidtop + hidtopinc;
-            hidbiases = hidbiases + hidbiasinc;
-            topbiases = topbiases + hidbiasinc;
-            labbiases = labbiases + labbiasinc;
-            %%%%%%%%%%%%%%%% END OF UPDATES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            data = negdata;
+            %negtopstates = negtopprobs>rand(numcases, numtop);
+            postopprobs_temp = negtopprobs;
         end
-        fprintf(1, 'epoch %4i error %6.1f  \n', epoch, errsum);
+        
+        negtopact = mean(negtopprobs);
+        
+        negprods  = double(negdata')*double(negtopprobs)/numcases;
+        neghidact = mean(negdata);
+        
+        neglabprods  = neglabel'*negtopprobs/numcases;
+        neglabact = mean(neglabel);
+        %%%%%%%%% END OF NEGATIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
+        errD = sum(sum( (data-negdata).^2 ))/(numcases*numdims);
+        errL = sum(sum( (targets-neglabel).^2 ))/(numcases*nTargets);
+        errsum = errD +errL + errsum;
+        
+        
+        
+        
+        %%%%%%%%% UPDATE WEIGHTS AND BIASES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        hidtopinc = momentum*hidtopinc + ...
+            epsilonwv*( (posprods-negprods) - weightcost*hidtop);
+        labtopinc = momentum*labtopinc + ...
+            epsilonwl*( (poslabprods-neglabprods) - weightcost*labtop);
+        hidbiasinc = momentum*hidbiasinc + (epsilonhb)*(poshidact-neghidact);
+        labbiasinc = momentum*labbiasinc + (epsilonlb)*(poslabact-neglabact);
+        topbiasinc = momentum*topbiasinc + (epsilontb)*(postopact-negtopact);
+        
+        hidtop = hidtop + hidtopinc;
+        hidbiases = hidbiases + hidbiasinc;
+        topbiases = topbiases + topbiasinc;
+        labbiases = labbiases + labbiasinc;
+        %%%%%%%%%%%%%%%% END OF UPDATES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    end
+    errList=[errList; errsum errD errL];
+    
+    if mod(epoch,100)==1
+        fprintf(1, 'TOPRBM : epoch %4i error %6.6f\n', epoch, errsum);
         plot(epoch, errsum,'x');
         hold on;
-        plot(epoch, err1,'xg');
-        plot(epoch, err2,'xr');
+        plot(epoch, errD,'xg');
+        plot(epoch, errL,'xr');
+        drawnow
+        save layerTOPRBM
     end
-end;
+    
+end
+
+rbm.hidtop=hidtop;
+rbm.hidbiases=hidbiases;
+rbm.labtop=labtop;
+rbm.labbiases=labbiases;
+rbm.topbiases=topbiases;
+end

@@ -12,3 +12,6 @@
 *.key
 *test*.m
 *temp*.m
+*.png
+*.jpg
+*.fig
