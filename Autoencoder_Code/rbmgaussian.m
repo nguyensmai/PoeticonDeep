@@ -21,7 +21,7 @@
 % numhid    -- number of hidden units
 % batchdata -- the data that is divided into batches (numcases numdims numbatches)
 % restart   -- set to 1 if learning starts from beginning
-function [rbm,batchposhidstates, errL, negdata] = rbmgaussian(batchdata,rbm,maxepoch, restart)
+function [rbm,batchposhidprobs, errL, negdata] = rbmgaussian(batchdata,rbm,maxepoch, restart)
 
 epsilonw1      = 0.1;   % Learning rate for weights
 epsilonvb1     = 0.1;   % Learning rate for biases of visible units
@@ -53,6 +53,7 @@ z          = rbm.z;
 vishidinc   = zeros(numdims,numhid);
 hidbiasinc  = zeros(1,numhid);
 visbiasinc  = zeros(1,numdims);
+batchposhidprobs=zeros(numcases,numhid,numbatches);
 batchposhidstates=zeros(numcases,numhid,numbatches);
 figure;
 
@@ -70,6 +71,7 @@ for epoch = epoch:maxepoch,
         data = batchdata(:,:,batch);
         dataz= data./repmat(exp(z),numcases,1);
         poshidprobs = 1./(1 + exp(-dataz*vishid - repmat(hidbiases,numcases,1)));
+        batchposhidprobs(:,:,batch)=poshidprobs;
         posprods    = data' * poshidprobs/numcases;
         poshidact   = mean(poshidprobs);
         posvisact = mean(data);

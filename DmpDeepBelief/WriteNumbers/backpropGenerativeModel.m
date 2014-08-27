@@ -37,10 +37,10 @@ dbn.rbm{nLayers}.toplab = dbn.rbm{nLayers}.labtop';
 
 for epoch=1:maxepoch
     errsum=0;
-    targets=batchtargets(:,:,batch);
     for batch=1:numbatches
     %% 1. BOTTOM-UP PASS TO GET WAKE/POSITIVE PHASE PROB & SAMPLE STATES %%%%%
     posstates{1}  = batchdata(:,:,batch);
+    targets=batchtargets(:,:,batch);
     
     %1.1 First Bernoulli RBM
     if( strcmpi( 'GBRBM', dbn.rbm{1}.type ) )

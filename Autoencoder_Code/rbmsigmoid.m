@@ -22,12 +22,12 @@
 % batchdata -- the data that is divided into batches (numcases numdims numbatches)
 % restart   -- set to 1 if learning starts from beginning
 
-function [rbm,batchposhidstates,errL, negdata] = rbmsigmoid(batchdata,rbm,maxepoch, restart)
+function [rbm,batchposhidprobs,errL, batchnegdata] = rbmsigmoid(batchdata,rbm,maxepoch, restart)
 
-epsilonw1      = 0.1;   % Learning rate for weights
-epsilonvb1     = 0.1;   % Learning rate for biases of visible units
-epsilonhb1     = 0.1;   % Learning rate for biases of hidden units
-weightcost    = 0.2;
+epsilonw1      = 0.05;   % Learning rate for weights
+epsilonvb1     = 0.05;   % Learning rate for biases of visible units
+epsilonhb1     = 0.05;   % Learning rate for biases of hidden units
+weightcost    = 0.001;
 initialmomentum  = 0.5;
 finalmomentum    = 0.9;
 
@@ -52,11 +52,12 @@ negprods    = zeros(numdims,numhid);
 vishidinc  = zeros(numdims,numhid);
 hidbiasinc = zeros(1,numhid);
 visbiasinc = zeros(1,numdims);
+batchposhidprobs=zeros(numcases,numhid,numbatches);
 batchposhidstates=zeros(numcases,numhid,numbatches);
-figure;
+batchnegdata=zeros(size(batchdata));
+fig1= figure;
 
     %fprintf(1,'epoch %d\r',epoch);
-errsum=20;
 epoch=1;
 for epoch = epoch:maxepoch,
 %while errsum>0.1
@@ -68,7 +69,7 @@ for epoch = epoch:maxepoch,
         
         %%%%%%%%% START POSITIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         data = batchdata(:,:,batch);
-        poshidprobs = 1./(1 + exp(-data*vishid - repmat(hidbiases,numcases,1)));
+        poshidprobs = 1./(1 + exp(-data*(2*vishid) - repmat(2*hidbiases,numcases,1)));
         batchposhidprobs(:,:,batch)=poshidprobs;
         posprods    = data' * poshidprobs/numcases;
         poshidact   = mean(poshidprobs);
@@ -81,10 +82,11 @@ for epoch = epoch:maxepoch,
         %%%%%%%%% START NEGATIVE PHASE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         negdata = 1./(1 + exp(-poshidstates*vishid' - repmat(visbiases,numcases,1)));
 %         negdata = negdataprobs > rand(numcases,numdims);
-        neghidprobs = 1./(1 + exp(-negdata*vishid - repmat(hidbiases,numcases,1)));
+        neghidprobs = 1./(1 + exp(-negdata*(2*vishid) - repmat(2*hidbiases,numcases,1)));
         negprods  = negdata'*neghidprobs/numcases;
         neghidact = mean(neghidprobs);
         negvisact = mean(negdata);
+        batchnegdata(:,:,batch)=negdata;
         
         %%%%%%%%% END OF NEGATIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         err= sum(sum( (data-negdata).^2 ))/(numcases*numdims);
@@ -124,12 +126,15 @@ for epoch = epoch:maxepoch,
     errsum=errsum/numbatches;    
     errL=[errL;errsum];
 
-    if mod(epoch,100)==1
+    if mod(epoch,10)==1
         fprintf(1, 'RBMSIGMOID : epoch %4i error %6.6f\n', epoch, errsum);
+        figure(fig1)
         plot(epoch, errsum,'x');
         hold on;
         drawnow;
         save layerSIGMOID
+        show_rbm(negdata(1:81,:,1),numdims)
+        title(['RBMSIGMOID 1: epoch ', num2str(epoch), ' error ',num2str(errsum)])
     end
 end;
 
