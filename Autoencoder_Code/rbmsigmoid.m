@@ -69,6 +69,7 @@ for epoch = epoch:maxepoch,
         
         %%%%%%%%% START POSITIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         data = batchdata(:,:,batch);
+        data= 0.0+(data>rand(size(data)));
         poshidprobs = 1./(1 + exp(-data*(2*vishid) - repmat(2*hidbiases,numcases,1)));
         batchposhidprobs(:,:,batch)=poshidprobs;
         posprods    = data' * poshidprobs/numcases;
@@ -126,7 +127,7 @@ for epoch = epoch:maxepoch,
     errsum=errsum/numbatches;    
     errL=[errL;errsum];
 
-    if mod(epoch,10)==1
+    if mod(epoch,50)==1
         fprintf(1, 'RBMSIGMOID : epoch %4i error %6.6f\n', epoch, errsum);
         figure(fig1)
         plot(epoch, errsum,'x');

@@ -12,11 +12,10 @@
 % not been tested to the degree that would be advisable in any important
 % application.  All use of these programs is entirely at the user's own risk.
 
-function [dbn, errMF, negstates, neglabstates] = dbm_mf(batchdata,batchtargets,dbn, maxepoch,restart)
+function [dbn,  negstates] = generativeModel(batchdata,batchtargets,labels,dbn, maxepoch)
 
-if restart ==1,
-    dbn = randDBN(dbn.nodes,nTargets,dbn.type);
-end
+
+
 
 %% initialisation
 epsilonw      = 0.001;   % Learning rate for weights
@@ -139,6 +138,7 @@ for epoch = epoch:maxepoch
         
         %%%%% START NEGATIVE PHASE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         for iter=1:5
+            neglabstates = repmat(labels,10,1);
             negstates{2} = negprobs{2} > rand(numcases,dbn.nodes(2));
             
             negprobs{3} = 1./(1 + exp(-negstates{2}*dbn.rbm{2}.hidtop - neglabstates*dbn.rbm{2}.labtop - bias_pen));
@@ -223,17 +223,18 @@ for epoch = epoch:maxepoch
     
     
     
-    if mod(epoch,10)==1 && batch==1
-        show_rbm(negstates{1}(1:81,:), numdims);
+    if mod(epoch,10)==1 
+        show_rbm(negstates{1}, numdims);
         title(['dbm_mf epoch ',num2str(epoch),' reconstruction ']);
         drawnow;
     end
     end
-    
+
     fprintf(1, 'epoch %4i reconstruction error %6.1f \n Number of misclassified training cases %d (out of 60000) \n', epoch, errsum,60000-counter);
     errMF=[errMF;errsum];
     save  fullmnist_dbm
 end;
+
 end
 
 

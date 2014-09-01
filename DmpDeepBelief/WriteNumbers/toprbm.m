@@ -76,20 +76,20 @@ for epoch = 1:maxepoch
     time = epoch;%-(numCDiters-1)^2;
     if time>5,
         momentum=finalmomentum;
-        epsilonwv     = epsilonwv1/(numCDiters*log2(epoch));   % Learning rate for weights between the top and the hidden
-        epsilonwl     = epsilonwl1/(numCDiters*log2(epoch));   % Learning rate for weights between the top and the labels
-        epsilontb     = epsilontb1/(numCDiters*log2(epoch));   % Learning rate for biases of top units
-        epsilonhb     = epsilonhb1/(numCDiters*log2(epoch));   % Learning rate for biases of hidden units
-        epsilonlb     = epsilonlb1/(numCDiters*log2(epoch));   % Learning rate for biases of label units
+%         epsilonwv     = epsilonwv1/(numCDiters*log2(epoch));   % Learning rate for weights between the top and the hidden
+%         epsilonwl     = epsilonwl1/(numCDiters*log2(epoch));   % Learning rate for weights between the top and the labels
+%         epsilontb     = epsilontb1/(numCDiters*log2(epoch));   % Learning rate for biases of top units
+%         epsilonhb     = epsilonhb1/(numCDiters*log2(epoch));   % Learning rate for biases of hidden units
+%         epsilonlb     = epsilonlb1/(numCDiters*log2(epoch));   % Learning rate for biases of label units
         
     else
         momentum=initialmomentum;
+    end
         epsilonwv     = epsilonwv1/(1.0*numCDiters);   % Learning rate for weights between the top and the hidden
         epsilonwl     = epsilonwl1/(1.0*numCDiters);   % Learning rate for weights between the top and the labels
         epsilontb     = epsilontb1/(1.0*numCDiters);   % Learning rate for biases of top units
         epsilonhb     = epsilonhb1/(1.0*numCDiters);   % Learning rate for biases of hidden units
         epsilonlb     = epsilonlb1/(1.0*numCDiters);   % Learning rate for biases of label units
-    end;
     
     
     for batch = 1:numbatches,
@@ -105,8 +105,8 @@ for epoch = 1:maxepoch
         
         i=1;
         posprobs{i+1} = 1./(1 + exp( ...
-            -2*posstates{i}*dbn.rbm{i}.vishid...
-            - 2*repmat(dbn.rbm{i}.hidbiases,numcases,1)...
+            -posstates{i}*(2*dbn.rbm{i}.vishid)...
+            - repmat(2*dbn.rbm{i}.hidbiases,numcases,1)...
             ));
         posstates{i+1} = posprobs{i+1} > rand(size(posprobs{i+1}));
         
@@ -134,10 +134,10 @@ for epoch = 1:maxepoch
         
         poshidact = mean(posstates{i});
         poslabact = mean(targets);
-        postopact = mean(postopprobs);
+        postopact = mean(posprobs{i+1});
 
         %%%%%%%%% END OF POSITIVE PHASE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        postopprobs_temp=postopprobs;
+        postopprobs_temp=posprobs{i+1};
         
         %%%%%%%%% START NEGATIVE PHASE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         for iter=1:numCDiters
@@ -163,7 +163,7 @@ for epoch = 1:maxepoch
             postopprobs_temp = 1./(1 + exp(-negdata*hidtop -neglabel*labtop - repmat(topbiases,numcases,1)));
             %negtopstates = negtopprobs>rand(numcases, numtop);
         end
-        postopprobs= postopprobs_temp;
+        negtopprobs= postopprobs_temp;
         
         negtopact = mean(negtopprobs);
         
@@ -192,6 +192,7 @@ for epoch = 1:maxepoch
         topbiasinc = momentum*topbiasinc + (epsilontb)*(postopact-negtopact);
         
         hidtop = hidtop + hidtopinc;
+        labtop = labtop +labtopinc;
         hidbiases = hidbiases + hidbiasinc;
         topbiases = topbiases + topbiasinc;
         labbiases = labbiases + labbiasinc;
@@ -214,8 +215,8 @@ for epoch = 1:maxepoch
 end
 
 dbn.rbm{end}.hidtop=hidtop;
-dbn.rbm{end}.hidbiases=hidbiases;
 dbn.rbm{end}.labtop=labtop;
+dbn.rbm{end}.hidbiases=hidbiases;
 dbn.rbm{end}.labbiases=labbiases;
 dbn.rbm{end}.topbiases=topbiases;
 end

@@ -15,7 +15,7 @@ function show_rbm(rbm_w,n_dims)
     end
     extreme = max(abs(to_show(:)));
     try
-        figure
+        %figure
         imshow(to_show, [-extreme, extreme]);
         title('hidden units of the RBM');
     catch err

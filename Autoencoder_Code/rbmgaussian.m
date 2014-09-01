@@ -23,11 +23,11 @@
 % restart   -- set to 1 if learning starts from beginning
 function [rbm,batchposhidprobs, errL, negdata] = rbmgaussian(batchdata,rbm,maxepoch, restart)
 
-epsilonw1      = 0.1;   % Learning rate for weights
-epsilonvb1     = 0.1;   % Learning rate for biases of visible units
-epsilonhb1     = 0.1;   % Learning rate for biases of hidden units
-epsilonz1     = 0.1;   % Learning rate for biases of hidden units
-weightcost  = 0.2;
+epsilonw1      = 0.01;   % Learning rate for weights
+epsilonvb1     = 0.01;   % Learning rate for biases of visible units
+epsilonhb1     = 0.01;   % Learning rate for biases of hidden units
+epsilonz1     = 0.001;   % Learning rate for biases of hidden units
+weightcost  = 0.001;
 initialmomentum  = 0.5;
 finalmomentum    = 0.9;
 
@@ -46,19 +46,18 @@ hidbiases  = rbm.hidbiases;
 visbiases  = rbm.visbiases;
 z          = rbm.z;
 
-% poshidprobs = zeros(numcases,numhid);
-% neghidprobs = zeros(numcases,numhid);
-% posprods    = zeros(numdims,numhid);
-% negprods    = zeros(numdims,numhid);
+poshidprobs = zeros(numcases,numhid);
+neghidprobs = zeros(numcases,numhid);
+posprods    = zeros(numdims,numhid);
+negprods    = zeros(numdims,numhid);
 vishidinc   = zeros(numdims,numhid);
 hidbiasinc  = zeros(1,numhid);
 visbiasinc  = zeros(1,numdims);
 batchposhidprobs=zeros(numcases,numhid,numbatches);
 batchposhidstates=zeros(numcases,numhid,numbatches);
-figure;
+fig1= figure;
 
-errsum=20;
-epoch=0;
+epoch=1;
 for epoch = epoch:maxepoch,
 %while errsum>0.1
     % fprintf(1,'epoch %d\r',epoch);
