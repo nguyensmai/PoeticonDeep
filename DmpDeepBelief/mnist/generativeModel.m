@@ -18,9 +18,9 @@ function [dbn,  negstates] = generativeModel(batchdata,batchtargets,labels,dbn, 
 
 
 %% initialisation
-epsilonw      = 0.001;   % Learning rate for weights
-epsilonvb     = 0.001;   % Learning rate for biases of visible units
-epsilonhb     = 0.001;   % Learning rate for biases of hidden units
+epsilonw      = 0.0001;   % Learning rate for weights
+epsilonvb     = 0.0001;   % Learning rate for biases of visible units
+epsilonhb     = 0.0001;   % Learning rate for biases of hidden units
 weightcost  = 0.0002;
 initialmomentum  = 0.5;
 finalmomentum    = 0.9;
@@ -60,7 +60,7 @@ hidbiases = (dbn.rbm{1}.hidbiases + dbn.rbm{2}.hidbiases);
 epoch=1;
 
 neglabstates = 1/nTargets*(ones(numcases,nTargets));
-data = round(rand(100,numdims));
+data = round(rand(numcases,numdims));
 negprobs{2} = 1./(1 + exp(-data*(2*dbn.rbm{1}.vishid) - repmat(hidbiases,numcases,1)));
 
 
@@ -70,10 +70,10 @@ epsilonhb      = epsilonhb/(1.000015^((epoch-1)*600));
 
 errMF=[];
 nLayers= numel(dbn.rbm);
+ 
 
 %% beginning of learning
-for epoch = epoch:maxepoch
-    [numcases numdims numbatches]=size(batchdata);
+for epoch = epoch:1 %maxepoch
     
     fprintf(1,'epoch %d \t eps %f\r',epoch,epsilonw);
     errsum=0;
@@ -84,10 +84,10 @@ for epoch = epoch:maxepoch
     %batch=0;
     %for batch_rr = rr; %1:numbatches,
     for batch=1:numbatches
-       % fprintf(1,'epoch %d batch %d\r',epoch,batch);
-        epsilonw = max(epsilonw/1.000015,0.00010);
-        epsilonvb = max(epsilonvb/1.000015,0.00010);
-        epsilonhb = max(epsilonhb/1.000015,0.00010);
+        % fprintf(1,'epoch %d batch %d\r',epoch,batch);
+        epsilonw = max(epsilonw/1.000015,0.0000010);
+        epsilonvb = max(epsilonvb/1.000015,0.0000010);
+        epsilonhb = max(epsilonhb/1.000015,0.0000010);
         
         
         %%%%%%%%% START POSITIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -137,32 +137,54 @@ for epoch = epoch:maxepoch
         
         
         %%%%% START NEGATIVE PHASE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        for iter=1:5
-            neglabstates = repmat(labels,10,1);
-            negstates{2} = negprobs{2} > rand(numcases,dbn.nodes(2));
-            
+        neglabstates = repmat(labels,numcases/10,1);
+negprobs{3} = 1./(1 + exp(-neglabstates*dbn.rbm{2}.labtop - bias_pen));
+negstates{3} = negprobs{3} > rand(numcases,dbn.nodes(3));
+totin =  bias_hid + 2*negstates{3}*dbn.rbm{2}.hidtop';
+negprobs{2} = 1./(1 + exp(-totin));
+negstates{2} = negprobs{2} > rand(numcases,dbn.nodes(2));
+negprobs{1} = 1./(1 + exp(-negstates{2}*dbn.rbm{1}.vishid' - bias_vis));
+negstates{1} = negprobs{1} > rand(numcases,dbn.nodes(1));
+  % negstates{2} = rand(numcases,dbn.nodes(2));
+iter=1;
+
+%%
+for iter=iter:10000
+            neglabstates = repmat(labels,numcases/10,1);
             negprobs{3} = 1./(1 + exp(-negstates{2}*dbn.rbm{2}.hidtop - neglabstates*dbn.rbm{2}.labtop - bias_pen));
             negstates{3} = negprobs{3} > rand(numcases,dbn.nodes(3));
-            
+     
+            totin = negstates{1}*dbn.rbm{1}.vishid + bias_hid + negstates{3}*dbn.rbm{2}.hidtop';
+            negprobs{2} = 1./(1 + exp(-totin));
+            negstates{2} = negprobs{2} > rand(numcases,dbn.nodes(2));
+
+       
             negprobs{1} = 1./(1 + exp(-negstates{2}*dbn.rbm{1}.vishid' - bias_vis));
             negstates{1} = negprobs{1} > rand(numcases,dbn.nodes(1));
             
-            totin = negstates{3}*dbn.rbm{2}.labtop' + bias_lab;
-            neglabprobs = exp(totin);
-            neglabprobs = neglabprobs./(sum(neglabprobs,2)*ones(1,nTargets));
+%             totin = negstates{3}*dbn.rbm{2}.labtop' + bias_lab;
+%             neglabprobs = exp(totin);
+%             neglabprobs = neglabprobs./(sum(neglabprobs,2)*ones(1,nTargets));
             
-            xx = cumsum(neglabprobs,2);
-            xx1 = rand(numcases,1);
-            neglabstates = neglabstates*0;
-            for jj=1:numcases
-                index = min(find(xx1(jj) <= xx(jj,:)));
-                neglabstates(jj,index) = 1;
-            end
-            xxx = sum(sum(neglabstates)) ;
+            %             xx = cumsum(neglabprobs,2);
+            %             xx1 = rand(numcases,1);
+            %             neglabstates = neglabstates*0;
+            %             for jj=1:numcases
+            %                 index = min(find(xx1(jj) <= xx(jj,:)));
+            %                 neglabstates(jj,index) = 1;
+            %             end
+            %             xxx = sum(sum(neglabstates)) ;
             
             totin = negstates{1}*dbn.rbm{1}.vishid + bias_hid + negstates{3}*dbn.rbm{2}.hidtop';
             negprobs{2} = 1./(1 + exp(-totin));
-            
+            negstates{2} = negprobs{2} > rand(numcases,dbn.nodes(2));
+
+            if mod(iter,100)==1
+                show_rbm(negprobs{1}(1:10*nTargets,:), numdims);
+                title(['generative iter ',num2str(iter),' reconstruction ']);
+                drawnow;
+                save  loadIter
+            end
         end
         negprobs{3} = 1./(1 + exp(-negprobs{2}*dbn.rbm{2}.hidtop - neglabprobs*dbn.rbm{2}.labtop - bias_pen));
         
@@ -176,9 +198,9 @@ for epoch = epoch:maxepoch
         
         
         %%%%%%%%% END OF NEGATIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-       % err= sum(sum( (data-negdata_CD1).^2 ));
-        err= sum(sum( (data-negstates{1}).^2 ));
-        errsum = err + errsum;
+        err= sum(sum( (data-negdata_CD1).^2 ));
+        % err= sum(sum( (data-negstates{1}).^2 ));
+        errsum = err/(numdims*numcases) + errsum;
         
         if epoch >5
             momentum=finalmomentum;
@@ -220,19 +242,23 @@ for epoch = epoch:maxepoch
         dbn.rbm{2}.topbiases = dbn.rbm{2}.topbiases + penbiasinc;
         dbn.rbm{2}.labbiases = dbn.rbm{2}.labbiases + labbiasinc;
         %%%%%%%%%%%%%%% END OF UPDATES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-    
-    
-    if mod(epoch,10)==1 
-        show_rbm(negstates{1}, numdims);
-        title(['dbm_mf epoch ',num2str(epoch),' reconstruction ']);
-        drawnow;
+        
+        
+        
+        if mod(epoch,20)==1
+            show_rbm(negprobs{1}(1:10*nTargets,:), numdims);
+           % title(['generative epoch ',num2str(epoch),' reconstruction ']);
+            drawnow;
+            if batch==numbatches
+                save  load
+            end
+            
+        end
     end
-    end
-
-    fprintf(1, 'epoch %4i reconstruction error %6.1f \n Number of misclassified training cases %d (out of 60000) \n', epoch, errsum,60000-counter);
+    
+    errsum=errsum/numbatches;
+    fprintf(1, 'epoch %4i reconstruction error %6.4f \n Number of misclassified training cases %d (out of %d) \n', epoch, errsum,numbatches*numcases-counter,numbatches*numcases);
     errMF=[errMF;errsum];
-    save  fullmnist_dbm
 end;
 
 end

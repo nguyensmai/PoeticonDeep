@@ -31,12 +31,14 @@ epsilonlb1     = 0.05;   % Learning rate for biases of label units
 weightcost  = 0.001;
 initialmomentum  = 0.5;
 finalmomentum    = 0.9;
+numCDitersMax=sqrt(maxepoch);
 [numcases, ~, numbatches]=size(batchdata);
 numdims=dbn.nodes(end-1);
 nTargets= length(dbn.rbm{end}.labbiases);
 numtop = length(dbn.rbm{end}.topbiases);
 nLayers=length(dbn.rbm);
 errList=[];
+errL1List=[];
 
 if restart ==1,
     % Initializing symmetric weights and biases.
@@ -70,9 +72,13 @@ hold on
 
 %%fprintf(1,'epoch %d\r',epoch);
 %fprintf(1,'epoch %d batch %d\r',epoch,batch);
-for epoch = 1:maxepoch
+epoch=1;
+
+%% 
+for epoch = epoch:maxepoch
     errsum=0;
-    numCDiters = ceil(epoch/20); %min([ceil(sqrt(epoch)) numCDitersMax]);
+    errL1=0;
+    numCDiters = min([ceil(sqrt(epoch)) numCDitersMax]);
     time = epoch;%-(numCDiters-1)^2;
     if time>5,
         momentum=finalmomentum;
@@ -94,7 +100,8 @@ for epoch = 1:maxepoch
     
     for batch = 1:numbatches,
         
-        posstates{1}  = batchdata(:,:,batch);
+        posprobs{1}  = batchdata(:,:,batch);
+        posstates{1} =  posprobs{1} > rand(size(posprobs{1}));
         targets=batchtargets(:,:,batch);
         
         %%%%%%%%% START POSITIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -162,19 +169,23 @@ for epoch = 1:maxepoch
             
             postopprobs_temp = 1./(1 + exp(-negdata*hidtop -neglabel*labtop - repmat(topbiases,numcases,1)));
             %negtopstates = negtopprobs>rand(numcases, numtop);
+            
+            if iter==1
+                errL1 =errL1+ sum(sum( (targets-neglabel).^2 ))/(numcases*nTargets);
+            end
         end
         negtopprobs= postopprobs_temp;
         
         negtopact = mean(negtopprobs);
         
         negprods  = double(negdata')*double(negtopprobs)/numcases;
-        neghidact = mean(negdata);
+        neghidact = mean(negdataprobs);
         
         neglabprods  = neglabel'*negtopprobs/numcases;
         neglabact = mean(neglabel);
         %%%%%%%%% END OF NEGATIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
-        errD = sum(sum( (posstates{nLayers}-negdata).^2 ))/(numcases*numdims);
+        errD = sum(sum( (posprobs{nLayers}-negdataprobs).^2 ))/(numcases*numdims);
         errL = sum(sum( (targets-neglabel).^2 ))/(numcases*nTargets);
         errsum = errD +errL + errsum;
         
@@ -199,8 +210,9 @@ for epoch = 1:maxepoch
         %%%%%%%%%%%%%%%% END OF UPDATES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     end
     errList=[errList; errsum errD errL];
+    errL1List=[errL1List;errL1];
     
-    if mod(epoch,10)==1
+    if mod(epoch,50)==1
         fprintf(1, 'TOPRBM : epoch %4i error %6.6f\n', epoch, errsum);
         figure(fig2)
         plot(epoch, errsum,'x');

@@ -56,6 +56,7 @@ batchposhidprobs=zeros(numcases,numhid,numbatches);
 batchposhidstates=zeros(numcases,numhid,numbatches);
 batchnegdata=zeros(size(batchdata));
 fig1= figure;
+fig2= figure;
 
     %fprintf(1,'epoch %d\r',epoch);
 epoch=1;
@@ -68,8 +69,8 @@ for epoch = epoch:maxepoch,
         %fprintf(1,'epoch %d batch %d\r',epoch,batch);
         
         %%%%%%%%% START POSITIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        data = batchdata(:,:,batch);
-        data= 0.0+(data>rand(size(data)));
+        dataprobs = batchdata(:,:,batch);
+        data= 0.0+(dataprobs>rand(size(dataprobs)));
         poshidprobs = 1./(1 + exp(-data*(2*vishid) - repmat(2*hidbiases,numcases,1)));
         batchposhidprobs(:,:,batch)=poshidprobs;
         posprods    = data' * poshidprobs/numcases;
@@ -90,7 +91,7 @@ for epoch = epoch:maxepoch,
         batchnegdata(:,:,batch)=negdata;
         
         %%%%%%%%% END OF NEGATIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        err= sum(sum( (data-negdata).^2 ))/(numcases*numdims);
+        err= sum(sum( (dataprobs-negdata).^2 ))/(numcases*numdims);
         errsum = err + errsum;
         
         %%%%%%%%% UPDATE WEIGHTS AND BIASES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -134,7 +135,9 @@ for epoch = epoch:maxepoch,
         hold on;
         drawnow;
         save layerSIGMOID
-        show_rbm(negdata(1:81,:,1),numdims)
+        figure(fig2)
+        show_rbm(batchnegdata(1:81,:,1),numdims)
+        drawnow
         title(['RBMSIGMOID 1: epoch ', num2str(epoch), ' error ',num2str(errsum)])
     end
 end;

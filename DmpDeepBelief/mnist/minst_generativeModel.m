@@ -19,18 +19,19 @@ numdims=size(batchdata,2);
 numhid=500; numpen=1000; %numpen2=100;
 nodes = [numdims numhid numpen];% numpen2];
 dbn = randDBN(nodes,nTargets,'ASSOC');
-show_rbm(batchdata(1:81,:,end),numdims)
+show_rbm(batchdata(1:81,:,1),numdims)
+title('training data')
 
 %% train each rbm with contrastive-divergence
 
-maxepoch=51;
+maxepoch=5001;
 fprintf(1,'Pretraining Layer 1 with RBM: %d-%d \n',numdims,numhid);
 restart=1;
 [dbn.rbm{1},batchposhidprobs, errL1,negdata] = rbmsigmoid(batchdata,dbn.rbm{1},maxepoch,restart);
 title('error for layer1');
 save layer1
-show_rbm(negdata(1:81,:,end),numdims)
-
+show_rbm(negdata(1:81,:,1),numdims)
+title('reconstruction by layer1')
 %%
 % maxepoch=1;
 % fprintf(1,'\nPretraining Layer 2 with RBM: %d-%d \n',numhid,numpen);
@@ -39,7 +40,7 @@ show_rbm(negdata(1:81,:,end),numdims)
 % title('layer2');
 % save layer2;
 
-maxepoch=101;
+maxepoch=5001;
 %fprintf(1,'\nPretraining Layer 3  (hidden and labels) with RBM: [%d %d]-%d \n',numpen,nTargets,numpen2);
 restart=1;
 [dbn,errL3] = toprbm(batchdata,batchtargets,dbn,maxepoch,restart);
@@ -50,9 +51,14 @@ save layer3;
 
 %% mean-field
 dbn = untie(dbn);
-maxepoch=151;
+maxepoch=6001;
 restart=0;
 [dbn, errBack, negstates, neglabels] = dbm_mf(batchdata,batchtargets,dbn, maxepoch,restart);
 title('error for mean-field');
 save dbmMfTrain
+
+figure
+[dbn,  negstates] = generativeModel(batchdata,batchtargets,eye(nTargets),dbn,500)
+figure
+[~, errTest, negstates, neglabels] = dbm_mf(batchdata,batchtargets,dbn, 1,0);
 

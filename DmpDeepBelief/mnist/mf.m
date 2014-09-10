@@ -31,7 +31,7 @@ function  [temp_h1, temp_h2] = ...
  temp_h1_old = temp_h1;
  temp_h2_old = temp_h2;
 
- for ii= 1:10 % Number of the mean-field updates. I also used 30 MF updates.  
+ for ii= 1:30 % Number of the mean-field updates. I also used 30 MF updates.  
    totin_h1 = big_bias + bias_hid + (temp_h2*hidpen');
    temp_h1_new = 1./(1 + exp(-totin_h1));
 
