@@ -1,3 +1,7 @@
+% Copyright (c) 2013 Sao Mai Nguyen
+%               e-mail : nguyensmai@gmail.com
+%               http://nguyensmai.free.fr/
+
 P = path();
 P = path(P,'../../dmp_bbo_matlab_deprecated-master_deprecated/dynamicmovementprimitive');
 P = path(P,'../WriteNumbers');

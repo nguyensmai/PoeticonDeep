@@ -1,3 +1,7 @@
+% Copyright (c) 2013 Sao Mai Nguyen
+%               e-mail : nguyensmai@gmail.com
+%               http://nguyensmai.free.fr/
+
 function show_rbm(rbm_w,n_dims)
     n_hid = size(rbm_w, 1);
     n_dims = sqrt(n_dims);

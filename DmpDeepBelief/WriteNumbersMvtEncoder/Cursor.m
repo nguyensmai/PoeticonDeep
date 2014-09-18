@@ -1,3 +1,6 @@
+% Copyright (c) 2013 Sao Mai Nguyen
+%               e-mail : nguyensmai@gmail.com
+%               http://nguyensmai.free.fr/%%
 classdef Cursor
     properties
         x_pos = 0
@@ -53,6 +56,7 @@ classdef Cursor
         end
         
         function test_cursor()
+            %%
             disp('a sample example')
             P = path();
             path(P,'../../dmp_bbo_matlab_deprecated-master_deprecated/dynamicmovementprimitive')

@@ -82,7 +82,7 @@ for i_trans = 1:n_trans
 
 end
 
-%if (figure_handle)
+if (figure_handle)
  % figure(figure_handle+n_trans)
 
   % Reproduce the trajectory
@@ -99,7 +99,7 @@ end
   % Make reproduced trajectories thin and dark
   set(handle,'LineWidth',3);
   set(handle,'Color',[0.0 0.0 0.5]);
-%end
+end
 
 
 
