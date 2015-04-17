@@ -4,6 +4,7 @@
 
 %%
 
+nRepeat= 200;
 n_basis_functions = 10;
 P = path();
 P = path(P,'../../dmp_bbo_matlab_deprecated-master_deprecated/dynamicmovementprimitive');
@@ -11,18 +12,20 @@ path(P,'../../Autoencoder_Code');
 digitdata=[];
 targets=[];
 nTargets = 10;
-nRepeat=1;
 
 %% replicate data
+
 for iDigit=1:nTargets
         for iSample=1:nSamples(iDigit)
             delta=randi(15,1,2)-8;
-            data{iDigit,nSamples(iDigit)+iSample}{1}=data{iDigit,iSample}{1}+delta(1);
-            data{iDigit,nSamples(iDigit)+iSample}{2}=data{iDigit,iSample}{2}+delta(2);
+            scale=1+0.1*rand;
+            data{iDigit,nSamples(iDigit)+iSample}{1}=scale*(data{iDigit,iSample}{1}-250)+delta(1);
+            data{iDigit,nSamples(iDigit)+iSample}{2}=scale*(data{iDigit,iSample}{2}-250)+delta(2);
         end
 end
 
 nSamples=2*nSamples;
+
 
 %% check nan values
 for iDigit=1:nTargets
@@ -64,7 +67,7 @@ for iDigit=1:nTargets
         trajectory.ydd = [zeros(1,d);ydd];
         
         
-        fig2= figure(2);
+        %fig2= figure(2);
         %           subplot(nTargets,max(nSamples), (iDigit-1)*max(nSamples) +iSample)
         hold on
         [ theta y0 g0 ] = dmptrain(trajectory,order,n_basis_functions);
@@ -86,9 +89,9 @@ for iDigit=1:nTargets
             trajectory.ydd = [zeros(1,d);ydd];
             
             
-            fig2= figure(2);
-            %           subplot(nTargets,max(nSamples), (iDigit-1)*max(nSamples) +iSample)
-            hold on
+%             fig2= figure(2);
+%             %           subplot(nTargets,max(nSamples), (iDigit-1)*max(nSamples) +iSample)
+%             hold on
             [ theta y0 g0 ] = dmptrain(trajectory,order,n_basis_functions);
         end
         %          theta=max(min(theta,10^10),-10^10);
@@ -99,8 +102,8 @@ for iDigit=1:nTargets
         target = zeros(1,nTargets);
         target(iDigit) = 1;
         targets = [targets; target];
-        hold on
-        plot( data{iDigit,iSample}{1},data{iDigit,iSample}{2},'-r')
+%         hold on
+%         plot( data{iDigit,iSample}{1},data{iDigit,iSample}{2},'-r')
         %figure(2)
         %  subplot(6,6, iSample)
         %         [ trajectory ] = dmpintegrate([ coordsX1 coordsY1],[ coordsX2 coordsY2],theta,time,dt,time_exec,order);
@@ -111,10 +114,10 @@ end
 
 
 
-% create batches
+%% create mini-batches
 totnum=size(digitdata,1);
 % randomorder=randperm(totnum);
-numbatches=  1;
+numbatches=  40;
 numdims  =  size(digitdata,2);
 batchsize = totnum/numbatches;
 
@@ -156,12 +159,15 @@ end
 %%% Reset random seeds
 rand('state',sum(100*clock));
 randn('state',sum(100*clock));
-save temp_batch_dmp
+%save temp_batch_dmp
 save maxmin maxdx mindx maxdy mindy n_basis_functions nRepeat
 
 %% check the data batches
-fig=figure('name',num2str(n_basis_functions))
-show_rbm(batchdata(randi(totnum,50,1),:,1),numdims)
+fig=figure('name',[num2str(n_basis_functions),' ', num2str(nRepeat)])
+ii=randi(batchsize,50,1);
+show_rbm(batchdata(ii,:,1),numdims, batchtargets(ii,:,1))
+
+
 % for iSample=1:50%batchsize
 %     coordsX1=batchdat a(iSample,1,1);
 %     coordsY1=batchdata(iSample,2,1);
@@ -185,15 +191,15 @@ show_rbm(batchdata(randi(totnum,50,1),:,1),numdims)
 %% create the dbn
 maxepoch=1000;
 numdims  =  size(batchdata,2);
-numhid=500; numpen=1000;
+numhid=5000; numpen=6000;
 nodes = [numdims numhid numpen];
-dbn = randDBN(nodes,nTargets,'ASSOC');
+dbn = randDBN(nodes,nTargets,'GBRBM');
 
-% train DBM
+%% train DBM
 maxepoch=500001;
 fprintf(1,'Pretraining Layer 1 with RBM: %d-%d \n',numdims,numhid);
 restart=1;
-[dbn.rbm{1},batchposhidprobs, errL1,negdata] = rbmsigmoid(batchdata,dbn.rbm{1},maxepoch,restart);
+[dbn.rbm{1},batchposhidprobs, errL1,negdata] = rbmgaussian(batchdata,dbn.rbm{1},maxepoch,restart);
 title('error for layer1');
 save layer1
 show_rbm(negdata(1:81,:,1),numdims)

@@ -25,9 +25,12 @@
 
 function [rbm,batchposhidprobs,errL, batchnegdata] = rbmsigmoid(batchdata,rbm,maxepoch, restart)
 
-epsilonw      = 10^-6;   % Learning rate for weights
-epsilonvb     = 10^-6;   % Learning rate for biases of visible units
-epsilonhb     = 10^-6;   % Learning rate for biases of hidden units
+epsilonw      = 10^-2;   % Learning rate for weights
+epsilonvb     = 10^-2;   % Learning rate for biases of visible units
+epsilonhb     = 10^-2;   % Learning rate for biases of hidden units
+% epsilonw      = 10^-6;   % Learning rate for weights
+% epsilonvb     = 10^-6;   % Learning rate for biases of visible units
+% epsilonhb     = 10^-6;   % Learning rate for biases of hidden units
 weightcost    = 0.0;
 initialmomentum  = 0.5;
 finalmomentum    = 0.8;

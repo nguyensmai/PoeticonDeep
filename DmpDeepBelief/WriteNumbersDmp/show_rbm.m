@@ -1,4 +1,4 @@
-function show_rbm(batchdata,numdims)
+function show_rbm(batchdata,numdims, batchtargets)
 totnum=size(batchdata,1);
 load maxmin
 order = 3;
@@ -7,6 +7,7 @@ dt=0.02;
 time_exec=time;
 % n_basis_functions=5;
 % nRepeat=1;
+errsum=0;
 
 for iSample=1:totnum
     coordsX1=mean(batchdata(iSample,1:(2*n_basis_functions+4):end));
@@ -17,8 +18,10 @@ for iSample=1:totnum
     visible= batchdata(iSample,:);
     visible= reshape(visible,2*n_basis_functions+4,nRepeat)';
     visible= visible(:,5:end);
-%      visible = visible + 0.01*(rand(size(visible))-0.5); %testing stability
-
+%     visibleN = visible + 0.05*(rand(size(visible))-0.5); %testing stability
+%     err = sum(sum( (visible-visibleN).^2 ))/(numdims);
+%     errsum = errsum + err;           
+%     visible=visibleN;
     visible= mean(visible,1);
     visible = visible.*[(maxdx-mindx) (maxdy-mindy)] ...
         +[mindx mindy];
@@ -28,6 +31,10 @@ for iSample=1:totnum
         [coordsX2 coordsY2 ],visible,time,dt,time_exec,order);
     hold on
     handle = plot(trajectory.y(:,1,1),trajectory.y(:,2,1),'r');
-end
+    if nargin>2 && ~isempty(batchtargets)    
+        title(find(batchtargets(iSample,:,1)>0))
+    end
 
+end
+% errsum/totnum
 end

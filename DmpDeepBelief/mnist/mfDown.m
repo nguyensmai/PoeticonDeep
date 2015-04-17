@@ -14,7 +14,7 @@
 
 % f.m Implements mean-field inference
 function  [temp_h1, temp_h2] = ...
-   mf(data,targets,vishid,hidbiases,visbiases,hidpen,penbiases,labpen,hidrecbiases);
+   mfDown(data,targets,vishid,hidbiases,visbiases,hidpen,penbiases,labpen,hidrecbiases)
 
 [numdim numhid]=size(vishid);
 [numhid numpen]=size(hidpen);
@@ -25,13 +25,13 @@ function  [temp_h1, temp_h2] = ...
   big_bias =  data*vishid; 
   lab_bias =  targets*labpen; 
 
- temp_h1 = 1./(1 + exp(-data*(2*vishid) - repmat(hidbiases,numcases,1)));
  temp_h2 = 1./(1 + exp(-temp_h1*hidpen - targets*labpen - bias_pen));
+ temp_h1 = 1./(1 + exp(-data*vishid' - repmat(hidbiases,numcases,1)));
 
  temp_h1_old = temp_h1;
  temp_h2_old = temp_h2;
 
- for ii= 1:10 % Number of the mean-field updates. I also used 30 MF updates.  
+ for ii= 1:1000 % Number of the mean-field updates. I also used 30 MF updates.  
    totin_h1 = big_bias + bias_hid + (temp_h2*hidpen');
    temp_h1_new = 1./(1 + exp(-totin_h1));
 

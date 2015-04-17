@@ -12,19 +12,19 @@
 % not been tested to the degree that would be advisable in any important
 % application.  All use of these programs is entirely at the user's own risk.
 
-function [dbn, errMF, negstates, neglabstates] = dbm_mf(batchdata,batchtargets,dbn, maxepoch,restart)
+function [dbn, errMF, negdata_CD1, negstates, neglabstates] = dbm_mf(batchdata,batchtargets,dbn, maxepoch,restart)
 
 if restart ==1,
     dbn = randDBN(dbn.nodes,nTargets,dbn.type);
 end
 
 %% initialisation
-epsilonw      = 0.0001;   % Learning rate for weights
-epsilonvb     = 0.0001;   % Learning rate for biases of visible units
-epsilonhb     = 0.0001;   % Learning rate for biases of hidden units
+epsilonw      = 0.001;   % Learning rate for weights
+epsilonvb     = 0.001;   % Learning rate for biases of visible units
+epsilonhb     = 0.001;   % Learning rate for biases of hidden units
 weightcost  = 0.0002;
 initialmomentum  = 0.5;
-finalmomentum    = 0.95;
+finalmomentum    = 0.9;
 
 [numcases numdims numbatches]=size(batchdata);
 
@@ -61,43 +61,41 @@ hidbiases = (dbn.rbm{1}.hidbiases + dbn.rbm{2}.hidbiases);
 epoch=1;
 
 neglabstates = 1/nTargets*(ones(numcases,nTargets));
-data = round(rand(numcases,numdims));
+data = round(rand(100,numdims));
 negprobs{2} = 1./(1 + exp(-data*(2*dbn.rbm{1}.vishid) - repmat(hidbiases,numcases,1)));
 
 
-epsilonw      = epsilonw/(1.0005^((epoch-1)*numbatches));
-epsilonvb      = epsilonvb/(1.0005^((epoch-1)*numbatches));
-epsilonhb      = epsilonhb/(1.0005^((epoch-1)*numbatches));
+epsilonw      = epsilonw/(1.000015^((epoch-1)*600));
+epsilonvb      = epsilonvb/(1.000015^((epoch-1)*600));
+epsilonhb      = epsilonhb/(1.000015^((epoch-1)*600));
 
 errMF=[];
 nLayers= numel(dbn.rbm);
-momentum=initialmomentum;
 
 %% beginning of learning
 for epoch = epoch:maxepoch
     [numcases numdims numbatches]=size(batchdata);
     
-    fprintf(1,'epoch %d \t epsilonw %f\r',epoch,epsilonw);
-    if mod(epoch,50)==0
-        momentum=(momentum+finalmomentum)/2;
-    end;
+    fprintf(1,'epoch %d \t eps %f\r',epoch,epsilonw);
+    errsum=0;
     
-    errsum=0;    
+    
     counter=0;
-    rr = randperm(numbatches);
+    %rr = randperm(numbatches);
     %batch=0;
     %for batch_rr = rr; %1:numbatches,
-    for batch=rr
+    for batch=1:numbatches
        % fprintf(1,'epoch %d batch %d\r',epoch,batch);
-        epsilonw = max(epsilonw/1.0005,0.0000010);
-        epsilonvb = max(epsilonvb/1.0005,0.0000010);
-        epsilonhb = max(epsilonhb/1.0005,0.0000010);
+        epsilonw = max(epsilonw/1.000015,0.00010);
+        epsilonvb = max(epsilonvb/1.000015,0.00010);
+        epsilonhb = max(epsilonhb/1.000015,0.00010);
         
         
         %%%%%%%%% START POSITIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        posprobs{1} = batchdata(:,:,batch);
+        data = batchdata(:,:,batch);
         targets = batchtargets(:,:,batch);
-        data = double(posprobs{1} > rand(numcases,dbn.nodes(1)));
+        posprobs{1}=data;
+        data = double(data > rand(numcases,dbn.nodes(1)));
         
         %%%%% First  MF %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         [posprobs{2}, posprobs{3}] = ...
@@ -172,21 +170,26 @@ for epoch = epoch:maxepoch
         negprods{2} = negprobs{2}'*negprobs{3};
         negact{2} = sum(negprobs{2});
         negact{3}   = sum(negprobs{3});
-        negact{1} = sum(negprobs{1});
+        negact{1} = sum(negstates{1});
         neglabact = sum(neglabstates);
         negprodslabpen = neglabstates'*negprobs{3};
         
         
         %%%%%%%%% END OF NEGATIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        err= sum(sum( (posprobs{1}-negdata_CD1).^2 ));
-        %err= sum(sum( (data-negstates{1}).^2 ));
-        errsum = err/(numdims*numcases) + errsum;
+       % err= sum(sum( (data-negdata_CD1).^2 ));
+        err= sum(sum( (data-negstates{1}).^2 ));
+        errsum = err + errsum;
         
-      
+        if epoch >5
+            momentum=finalmomentum;
+        else
+            momentum=initialmomentum;
+        end;
+        
         %%%%%%%%% UPDATE WEIGHTS AND BIASES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         visbiasinc = momentum*visbiasinc + (epsilonvb/numcases)*(posact{1}-negact{1});
-        labbiasinc = sqrt(momentum)*labbiasinc + (epsilonvb/(2*numcases))*(poslabact-neglabact);
+        labbiasinc = momentum*labbiasinc + (epsilonvb/numcases)*(poslabact-neglabact);
         
         hidmeans = sparsedamping*hidmeans + (1-sparsedamping)*posact{2}/numcases;
         sparsegrads = sparsecost*(repmat(hidmeans,numcases,1)-sparsetarget);
@@ -194,8 +197,8 @@ for epoch = epoch:maxepoch
         penmeans = sparsedamping*penmeans + (1-sparsedamping)*posact{3}/numcases;
         sparsegrads2 = sparsecost*(repmat(penmeans,numcases,1)-sparsetarget2);
         
-        labtopinc = sqrt(momentum)*labtopinc + ...
-            epsilonw/2*( (poslabprods-negprodslabpen)/numcases - weightcost*dbn.rbm{2}.labtop);
+        labtopinc = momentum*labtopinc + ...
+            epsilonw*( (poslabprods-negprodslabpen)/numcases - weightcost*dbn.rbm{2}.labtop);
         
         vishidinc = momentum*vishidinc + ...
             epsilonw*( (posprods{1}-negprods{1})/numcases - weightcost*dbn.rbm{1}.vishid - ...
@@ -220,22 +223,17 @@ for epoch = epoch:maxepoch
     
     
     
-    if mod(epoch,10)==1 && batch==1
-        %show_rbm(negstates{1}(1:nTargets^2,:), numdims);
-        show_rbm(negdata_CD1(1:nTargets^2,:), numdims);
+    if (mod(epoch,10)==1 || epoch==maxepoch) && batch==numbatches
+        show_rbm(negdata_CD1(1:81,:), numdims);
         title(['dbm_mf epoch ',num2str(epoch),' reconstruction ']);
         drawnow;
-        save  fullmnist_dbm
     end
     end
     
-    errsum=errsum/numbatches;
-    fprintf(1, 'epoch %4i reconstruction error %6.4f \n Number of misclassified training cases %d (out of %d) \n', epoch, errsum,numbatches*numcases-counter,numbatches*numcases);
-    errMF=[errMF;errsum counter];
+    fprintf(1, 'epoch %4i reconstruction error %6.1f \n Number of misclassified training cases %d (out of 60000) \n', epoch, errsum,60000-counter);
+    errMF=[errMF;errsum];
+    save  fullmnist_dbm
 end;
-
-dbn.rbm{1}.hidbiases= hidbiases/2;
-dbn.rbm{2}.hidbiases=hidbiases/2;
 end
 
 

@@ -1,6 +1,6 @@
 % Version 1.000
 %
-% Code provided by Geoff Hinton and Ruslan Salakhutdinov
+% Code provided by Geoff Hinton and Ruslan Salakhutdinov 
 % then edited by Sao Mai Nguyen
 %
 % Permission is granted for anyone to copy, use, modify, or distribute this
@@ -23,13 +23,12 @@
 % batchdata -- the data that is divided into batches (numcases numdims numbatches)
 % restart   -- set to 1 if learning starts from beginning
 
-function [rbm,batchposhidprobs,errL, batchnegdata] = rbmgaussian(batchdata,rbm,maxepoch, restart)
+function [rbm,batchposhidprobs,errL, batchnegdata] = rbmsigmoid(batchdata,rbm,maxepoch, restart)
 
-epsilonw      = 10^-3;   % Learning rate for weights
-epsilonvb     = 10^-3;   % Learning rate for biases of visible units
-epsilonhb     = 10^-3;   % Learning rate for biases of hidden units
-epsilonz      = 10^-4;   % Learning rate for weights
-weightcost    = 0.0;
+epsilonw1      = 0.05;   % Learning rate for weights
+epsilonvb1     = 0.05;   % Learning rate for biases of visible units
+epsilonhb1     = 0.05;   % Learning rate for biases of hidden units
+weightcost    = 0.001;
 initialmomentum  = 0.5;
 finalmomentum    = 0.9;
 
@@ -46,7 +45,6 @@ end
 vishid     = rbm.vishid;
 hidbiases  = rbm.hidbiases;
 visbiases  = rbm.visbiases;
-z          = rbm.z;
 
 poshidprobs = zeros(numcases,numhid);
 neghidprobs = zeros(numcases,numhid);
@@ -65,27 +63,43 @@ momentum=initialmomentum;
 epoch=1;
 %%
 for epoch = epoch:maxepoch,
-    %while errsum>0.1
+%while errsum>0.1
     % fprintf(1,'epoch %d\r',epoch);
     errsum=0;
-    epsilonw = max(epsilonw/1.00001,10^-9);
-    epsilonvb = max(epsilonvb/1.00001,10^-9);
-    epsilonhb = max(epsilonhb/1.00001,10^-9);
-    epsilonz = max(epsilonz/1.00001,10^-9);
-%     if epoch>10^2
-%         momentum=finalmomentum;
-%     end
-    rr=randperm(numbatches);
-  
-    % epoch=epoch+1;
+%     epsilonw = max(epsilonw/1.0001,10^-9);
+%     epsilonvb = max(epsilonvb/1.0001,10^-9);
+%     epsilonhb = max(epsilonhb/1.0001,10^-9);
+%     %momentum=min(momentum*1.00001,0.99);
+
+if epoch>500,
+    momentum=0.99;
+    epsilonw = epsilonw1/sqrt(100*epoch);
+    epsilonvb = epsilonvb1/sqrt(100*epoch);
+    epsilonhb = epsilonhb1/sqrt(100*epoch);
+elseif epoch>50,
+    momentum=finalmomentum;
+    epsilonw = epsilonw1/sqrt(epoch);
+    epsilonvb = epsilonvb1/sqrt(epoch);
+    epsilonhb = epsilonhb1/sqrt(epoch);
+else
+    momentum=initialmomentum;
+    epsilonw = epsilonw1;
+    epsilonvb = epsilonvb1;
+    epsilonhb = epsilonhb1;
+end;
+
+rr=randperm(numbatches);
+    if epoch>10^2
+        momentum=0.99;
+    end
+    
+    %epoch=epoch+1;
     for batch = rr,
         %fprintf(1,'epoch %d batch %d\r',epoch,batch);
-        ii=randperm(numcases);
-
+        
         %%%%%%%%% START POSITIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        data = batchdata(ii,:,batch);
-        dataz= data./repmat(exp(z),numcases,1);
-        poshidprobs = 1./(1 + exp(-dataz*vishid - repmat(hidbiases,numcases,1)));
+        data = batchdata(:,:,batch);
+        poshidprobs = 1./(1 + exp(-data*(vishid) - repmat(hidbiases,numcases,1)));
         batchposhidprobs(:,:,batch)=poshidprobs;
         posprods    = data' * poshidprobs/numcases;
         poshidact   = mean(poshidprobs);
@@ -96,67 +110,55 @@ for epoch = epoch:maxepoch,
         batchposhidstates(:,:,batch)= poshidstates;
         
         %%%%%%%%% START NEGATIVE PHASE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %  negmu    = 1./(1 + exp(-poshidstates*vishid' - repmat(visbiases,numcases,1)));
-        negmu    = poshidstates*vishid' + repmat(visbiases,numcases,1);
-        std = repmat(sqrt(exp(z)), numcases,1);
-        negdata  = random('norm', negmu, std);
-        negdataz  = negdata./repmat(exp(z),numcases,1);
-        neghidprobs = 1./(1 + exp(-negdataz*vishid - repmat(hidbiases,numcases,1)));
+        negdata = 1./(1 + exp(-poshidstates*vishid' - repmat(visbiases,numcases,1)));
+%         negdata = negdataprobs > rand(numcases,numdims);
+        neghidprobs = 1./(1 + exp(-negdata*vishid - repmat(hidbiases,numcases,1)));
         negprods  = negdata'*neghidprobs/numcases;
         neghidact = mean(neghidprobs);
         negvisact = mean(negdata);
-        batchnegdata(ii,:,batch)=negmu;
-                
+        batchnegdata(:,:,batch)=negdata;
+        
         %%%%%%%%% END OF NEGATIVE PHASE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        err = sum(sum( (data-negdata).^2 ))/(numcases*numdims);
-        errsum = errsum + err;
+        err= sum(sum( (data-negdata).^2 ))/(numcases*numdims);
+        errsum = err + errsum;
         
         %%%%%%%%% UPDATE WEIGHTS AND BIASES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        vishidinc = momentum*vishidinc + ...
-            epsilonw*( (posprods-negprods)./(repmat(exp(z)',1,numhid)) - weightcost*vishid);
-        visbiasinc = momentum*visbiasinc + epsilonvb./(exp(z)).*(posvisact-negvisact);
-        hidbiasinc = momentum*hidbiasinc + epsilonhb*(poshidact-neghidact);
-        zinc = epsilonz * exp(-z) .*(...
-            mean(1/2*(data-repmat(visbiases,numcases,1)).^2 - data.*(poshidprobs*vishid'),1) ...
-            - mean(1/2*(negdata-repmat(visbiases,numcases,1)).^2 - negdata.*(neghidprobs*vishid'),1) ...
-            );
+
+
         
-        vishid = vishid + vishidinc;
+        vishidinc = momentum*vishidinc + ...
+            epsilonw*( (posprods-negprods) - weightcost*vishid);
+        visbiasinc = momentum*visbiasinc + (epsilonvb)*(posvisact-negvisact);
+        hidbiasinc = momentum*hidbiasinc + (epsilonhb)*(poshidact-neghidact);
+        
+        vishid    = vishid + vishidinc;
         visbiases = visbiases + visbiasinc;
         hidbiases = hidbiases + hidbiasinc;
-        z = z+zinc;
         
         %%%%%%%%%%%%%%%% END OF UPDATES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
     end
-    errsum=errsum/numbatches;
-    errL=[errL;errsum];
     
-    if mod(epoch,2)==1
+    errsum=errsum/numbatches;    
+    errL=[errL;errsum];
+
+    if mod(epoch,100)==1 || epoch==maxepoch
         fprintf(1, 'RBMSIGMOID : epoch %4i error %6.6f\n', epoch, errsum);
         figure(fig1)
         plot(epoch, errsum,'x');
         hold on;
         drawnow;
-        if mod(epoch,10)==1
-            save layerGAUSSIAN
-        end
+        save layerSIGMOID
         figure(fig2)
         clf
-        show_rbm(batchnegdata(1:50,:,1),numdims)
+        show_rbm(batchnegdata(1:81,:,end),numdims)
         drawnow
-        title(['RBMGAUSSIAN: epoch ', num2str(epoch), ' error ',num2str(errsum)])
+        title(['RBMSIGMOID 1: reconstruction negdata epoch ', num2str(epoch), ' error ',num2str(errsum)])
     end
-    
 end;
 
 rbm.vishid    = vishid;
 rbm.hidbiases = hidbiases;
 rbm.visbiases = visbiases;
-rbm.z         = z;
 
-%plotReconstruction(negdata);
-%set(gcf,'name','rbm gaussian')
 end
-
-
