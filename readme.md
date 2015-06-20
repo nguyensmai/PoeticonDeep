@@ -4,6 +4,8 @@
 
 %               http://nguyensmai.free.fr/
 
+For a longer tutorial, please refer to readme.html
+
 Quick Tutorial
 ==============
 Requirements
